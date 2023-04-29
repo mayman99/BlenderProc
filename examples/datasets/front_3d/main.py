@@ -18,6 +18,8 @@ bproc.init()
 mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "3D_front_mapping.csv"))
 mapping = bproc.utility.LabelIdMapping.from_csv(mapping_file)
 
+models_info = bproc.utility.resolve_resource(os.path.join("front_3D", "model_info.json"))
+
 # set the light bounces
 bproc.renderer.set_light_bounces(diffuse_bounces=200, glossy_bounces=200, max_bounces=200,
                                   transmission_bounces=200, transparent_max_bounces=200)
@@ -27,7 +29,8 @@ loaded_objects = bproc.loader.load_front3d(
     json_path=args.front,
     future_model_path=args.future_folder,
     front_3D_texture_path=args.front_3D_texture_path,
-    label_mapping=mapping
+    label_mapping=mapping,
+    models_info=models_info
 )
 
 # Init sampler for sampling locations inside the loaded front3D house

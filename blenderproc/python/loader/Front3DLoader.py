@@ -19,11 +19,12 @@ from blenderproc.python.loader.ObjectLoader import load_obj
 from blenderproc.python.loader.TextureLoader import load_texture
 
 
-def load_front3d(json_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
+def load_front3d(json_path: str, models_info: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
                  ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
     """ Loads the 3D-Front scene specified by the given json file.
 
     :param json_path: Path to the json file, where the house information is stored.
+    :param models_info: Path to the models info json file, where the category information is stored.
     :param future_model_path: Path to the models used in the 3D-Front dataset.
     :param front_3D_texture_path: Path to the 3D-FRONT-texture folder.
     :param label_mapping: A dict which maps the names of the objects to ids.
@@ -46,13 +47,19 @@ def load_front3d(json_path: str, future_model_path: str, front_3D_texture_path: 
     with open(json_path, "r", encoding="utf-8") as json_file:
         data = json.load(json_file)
 
+    # load data from json file
+    models_info_data = {}
+    with open(models_info, "r", encoding="utf-8") as models_json:
+        models_data = json.load(models_json)
+        for item in models_data:
+            models_info_data[item["model_id"]] = item
+
     if "scene" not in data:
         raise ValueError(f"There is no scene data in this json file: {json_path}")
-
     created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                    ceiling_light_strength, label_mapping, json_path)
 
-    all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, future_model_path,
+    all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, future_model_path,
                                                               lamp_light_strength, label_mapping)
 
     created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture)
@@ -303,13 +310,14 @@ class _Front3DLoader:
         return created_objects
 
     @staticmethod
-    def load_furniture_objs(data: dict, future_model_path: str, lamp_light_strength: float,
+    def load_furniture_objs(data: dict, models_data: dict, future_model_path: str, lamp_light_strength: float,
                             label_mapping: LabelIdMapping) -> List[MeshObject]:
         """
         Load all furniture objects specified in the json file, these objects are stored as "raw_model.obj" in the
         3D_future_model_path. For lamp the lamp_light_strength value can be changed via the config.
 
         :param data: json data dir. Should contain "furniture"
+        :param models_data: json data dir. Should contain "Categories"
         :param future_model_path: Path to the models used in the 3D-Front dataset.
         :param lamp_light_strength: Strength of the emission shader used in each lamp.
         :param label_mapping: A dict which maps the names of the objects to ids.
@@ -329,7 +337,10 @@ class _Front3DLoader:
                 objs = load_obj(filepath=obj_file)
                 # extract the name, which serves as category id
                 used_obj_name = ""
-                if "category" in ele:
+                if ele["jid"] in models_data.keys():
+                    if models_data[ele["jid"]]["category"]:
+                        used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
+                elif "category" in ele:
                     used_obj_name = ele["category"]
                 elif "title" in ele:
                     used_obj_name = ele["title"]
@@ -337,6 +348,7 @@ class _Front3DLoader:
                         used_obj_name = used_obj_name.split("/")[0]
                 if used_obj_name == "":
                     used_obj_name = "others"
+                    continue
                 for obj in objs:
                     obj.set_name(used_obj_name)
                     # add some custom properties
@@ -415,6 +427,7 @@ class _Front3DLoader:
                                 new_obj = obj
                             created_objects.append(new_obj)
                             new_obj.set_cp("is_used", True)
+                            new_obj.set_cp("room_type_id", room["instanceid"])
                             new_obj.set_cp("room_id", room_id)
                             new_obj.set_cp("3D_future_type", "Object")  # is an object used for the interesting score
                             new_obj.set_cp("coarse_grained_class", new_obj.get_cp("category_id"))

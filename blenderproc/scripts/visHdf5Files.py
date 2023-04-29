@@ -123,8 +123,9 @@ def vis_data(key, data, full_hdf5_data=None, file_label="", rgb_keys=None, flow_
                     filename = save_to_file.replace(".png", f"_{channel_label}.png")
                 else:
                     filename = save_to_file
-                plt.imsave(filename, data[:, :, i], cmap='jet')
+                plt.imsave(filename, data)
                 plt.close()
+
 
     elif key_matches(key, depth_keys):
         # Make sure the data has only one channel, otherwise matplotlib will treat it as a rgb image
