@@ -55,7 +55,7 @@ for f in files:
             future_model_path="../3dfront/3D-FRONT-models/3D-FUTURE-model-part1/3D-FUTURE-model/",
             front_3D_texture_path="../3dfront/3D-FRONT-texture/",
             label_mapping=mapping,
-            models_info=models_info
+            models_info_path=models_info
         )
 
         rooms_objects_count = {}
