@@ -1,7 +1,6 @@
 import blenderproc as bproc
 import argparse
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('camera', nargs='?', default="examples/resources/camera_positions", help="Path to the camera file")
 parser.add_argument('scene', nargs='?', default="examples/basics/semantic_segmentation/scene.blend", help="Path to the scene.obj file")
