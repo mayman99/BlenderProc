@@ -13,7 +13,7 @@ def object_inside_camera(location: list, scale: int):
     return False
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="/home/m/ws/data/fork12/", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="/home/m/ws/data/reduced_cats/", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="/home/m/ws/3dfront/3D-FRONT/", help="Path to where the data should be saved")
 args = parser.parse_args()
 
@@ -111,7 +111,7 @@ for f in files:
         meta_data_reduced_row["file_name"] = str(output_number) + "_class_segmaps.png"
         meta_data_reduced_row["text"] = rooms_with_numbers
 
-        bproc.renderer.set_max_amount_of_samples(8)
+        bproc.renderer.set_max_amount_of_samples(1)
 
         data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
         # bproc.renderer.enable_segmentation_output(map_by=["class"])
