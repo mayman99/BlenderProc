@@ -86,20 +86,31 @@ for f in files:
             delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
             continue
 
+
         rooms_with_numbers = "A flat containing "
+        rooms_with_numbers_reduced = "A flat containing "
         for room_type_id in rooms_objects_count.keys():
             rooms_with_numbers += " a " + room_type_id.split("-")[0] + " " + " with "
+            rooms_with_numbers_reduced += " a " + room_type_id.split("-")[0] + " " + " and "
             for obj_name in rooms_objects_count[room_type_id].keys():
-                if rooms_objects_count[room_type_id][obj_name] == 1:
-                    rooms_with_numbers += "a " + obj_name + ", "
-                else:
-                    rooms_with_numbers += str(rooms_objects_count[room_type_id][obj_name]) + " " + obj_name + "s, "
+                # Avoid adding all objects to the text desc of the room.
+                if obj_name not in ['ceiling', 'hole', 'void', 'others', 'wall']:
+                    if rooms_objects_count[room_type_id][obj_name] == 1:
+                        rooms_with_numbers += "a " + obj_name + " "
+                    else:
+                        rooms_with_numbers += str(rooms_objects_count[room_type_id][obj_name]) + " " + obj_name + "s "
             rooms_with_numbers += ". "
+            rooms_with_numbers_reduced += ". "
+
 
         meta_data_row = {}
         meta_data_row["file_name"] = str(output_number) + "_class_segmaps.png"
         meta_data_row["text"] = rooms_with_numbers
-        
+
+        meta_data_reduced_row = {}
+        meta_data_reduced_row["file_name"] = str(output_number) + "_class_segmaps.png"
+        meta_data_reduced_row["text"] = rooms_with_numbers
+
         bproc.renderer.set_max_amount_of_samples(8)
 
         data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
@@ -110,6 +121,10 @@ for f in files:
 
         already_written_scenes.append(f)
         with open(os.path.join(args.output_dir, "metadata.jsonl"), "a+") as f:
+            json.dump(meta_data_row, f)
+            f.writelines('\n')
+
+        with open(os.path.join(args.output_dir, "metadata_reduced.jsonl"), "a+") as f:
             json.dump(meta_data_row, f)
             f.writelines('\n')
 
