@@ -50,11 +50,11 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
     # load category data from json file
     models_info_data = {}
     fine_to_coarse_category = {'smartcustomizedceiling': 'ceiling', 'ceiling': 'ceiling', 'extrusioncustomizedceilingmodel': 'ceiling', 'customizedceiling': 'ceiling', 
-        'bed': 'bed', 'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
+        'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
         'hanging chair': 'chair', 'folding chair': 'chair','dressing chair': 'chair','dining chair': 'chair','armchair': 'chair','classic chinese chair': 'chair','lounge chair / cafe chair / office chair': 'chair','lounge chair / book-chair / computer chair': 'chair',
-            'pendant lamp':'lamp', 'chaise longue sofa':'sofa', 'two-seat sofa':'sofa', 'lazy sofa':'sofa', 'three-seat / multi-person sofa':'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa'
+            'chaise longue sofa':'sofa', 'two-seat sofa':'sofa', 'lazy sofa':'sofa', 'three-seat / multi-person sofa':'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa'
             , 'sideboard / side cabinet / console table': 'cabinet', 'sideboard / side cabinet / console': 'cabinet', 'drawer chest / corner cabinet': 'cabinet',
-            '200 - on the floor': 'floor','300 - on top of others': 'others','500 - attach to ceiling': 'ceiling','400 - attach to wall': 'floor','void': 'void','void': 'void'}
+            '200 - on the floor': 'floor','300 - on top of others': 'others','500 - attach to ceiling': 'ceiling','400 - attach to wall': 'floor'}
     with open(os.path.join(models_info_path, ), "r", encoding="utf-8") as models_json:
         models_data = json.load(models_json)
         for item in models_data:
@@ -344,14 +344,10 @@ class _Front3DLoader:
                 # load all objects from this .obj file
                 objs = load_obj(filepath=obj_file)
                 # extract the name, which serves as category id
-                fine_used_obj_name = ""
                 used_obj_name = ""
                 if ele["jid"] in models_data.keys():
                     if models_data[ele["jid"]]["category"]:
-                        fine_used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
-                        if fine_used_obj_name in fine_to_coarse_category.keys():
-                            used_obj_name = fine_to_coarse_category[fine_used_obj_name]
-                        used_obj_name = fine_used_obj_name
+                        used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
                 elif "category" in ele:
                     used_obj_name = ele["category"]
                 elif "title" in ele:
@@ -361,6 +357,10 @@ class _Front3DLoader:
                 if used_obj_name == "":
                     used_obj_name = "others"
                     continue
+
+                if used_obj_name in fine_to_coarse_category.keys():
+                    used_obj_name = fine_to_coarse_category[used_obj_name]
+
                 for obj in objs:
                     obj.set_name(used_obj_name)
                     # add some custom properties

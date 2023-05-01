@@ -32,7 +32,7 @@ bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
 files = os.listdir(args.data_dir)
-output_number = 33
+output_number = 204
 
 already_written_scenes = []
 if not os.path.exists(os.path.join(args.output_dir, "existing_scenes.json")):
@@ -113,8 +113,8 @@ for f in files:
 
         bproc.renderer.set_max_amount_of_samples(1)
 
-        data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
-        # bproc.renderer.enable_segmentation_output(map_by=["class"])
+        # data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
+        bproc.renderer.enable_segmentation_output(map_by=["class"], default_values={'category_id': 0})
 
         # render the whole pipeline
         data = bproc.renderer.render()
