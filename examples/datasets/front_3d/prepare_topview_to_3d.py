@@ -19,7 +19,7 @@ def location_to_pixel(loc:Vector, resolution_x:int=512, resolution_y:int=512):
     return x, y
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="/home/m/ws/data/fork14/", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="/home/m/ws/data/reduced_cats/", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="/home/m/ws/3dfront/3D-FRONT/", help="Path to where the data should be saved")
 args = parser.parse_args()
 
@@ -37,7 +37,7 @@ bpy.context.scene.render.resolution_y = 512
 bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
-files = os.listdir(args.data_dir)[:3]
+files = os.listdir(args.data_dir)
 output_number = 0
 
 already_written_scenes = []

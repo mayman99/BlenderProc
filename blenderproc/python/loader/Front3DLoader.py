@@ -19,12 +19,12 @@ from blenderproc.python.loader.ObjectLoader import load_obj
 from blenderproc.python.loader.TextureLoader import load_texture
 
 
-def load_front3d(json_path: str, models_info: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
+def load_front3d(json_path: str, models_info_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
                  ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
     """ Loads the 3D-Front scene specified by the given json file.
 
     :param json_path: Path to the json file, where the house information is stored.
-    :param models_info: Path to the models info json file, where the category information is stored.
+    :param models_info_path: Path to the models info json file, where the category information is stored.
     :param future_model_path: Path to the models used in the 3D-Front dataset.
     :param front_3D_texture_path: Path to the 3D-FRONT-texture folder.
     :param label_mapping: A dict which maps the names of the objects to ids.
@@ -47,19 +47,26 @@ def load_front3d(json_path: str, models_info: str, future_model_path: str, front
     with open(json_path, "r", encoding="utf-8") as json_file:
         data = json.load(json_file)
 
-    # load data from json file
+    # load category data from json file
     models_info_data = {}
-    with open(models_info, "r", encoding="utf-8") as models_json:
+    fine_to_coarse_category = {'smartcustomizedceiling': 'ceiling', 'ceiling': 'ceiling', 'extrusioncustomizedceilingmodel': 'ceiling', 'customizedceiling': 'ceiling', 
+        'bed': 'bed', 'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
+        'hanging chair': 'chair', 'folding chair': 'chair','dressing chair': 'chair','dining chair': 'chair','armchair': 'chair','classic chinese chair': 'chair','lounge chair / cafe chair / office chair': 'chair','lounge chair / book-chair / computer chair': 'chair',
+            'pendant lamp':'lamp', 'chaise longue sofa':'sofa', 'two-seat sofa':'sofa', 'lazy sofa':'sofa', 'three-seat / multi-person sofa':'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa'
+            , 'sideboard / side cabinet / console table': 'cabinet', 'sideboard / side cabinet / console': 'cabinet', 'drawer chest / corner cabinet': 'cabinet',
+            '200 - on the floor': 'floor','300 - on top of others': 'others','500 - attach to ceiling': 'ceiling','400 - attach to wall': 'floor','void': 'void','void': 'void'}
+    with open(os.path.join(models_info_path, ), "r", encoding="utf-8") as models_json:
         models_data = json.load(models_json)
         for item in models_data:
             models_info_data[item["model_id"]] = item
+
 
     if "scene" not in data:
         raise ValueError(f"There is no scene data in this json file: {json_path}")
     created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                    ceiling_light_strength, label_mapping, json_path)
 
-    all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, future_model_path,
+    all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
                                                               lamp_light_strength, label_mapping)
 
     created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture)
@@ -310,14 +317,15 @@ class _Front3DLoader:
         return created_objects
 
     @staticmethod
-    def load_furniture_objs(data: dict, models_data: dict, future_model_path: str, lamp_light_strength: float,
+    def load_furniture_objs(data: dict, models_data: dict, fine_to_coarse_category: dict, future_model_path: str, lamp_light_strength: float,
                             label_mapping: LabelIdMapping) -> List[MeshObject]:
         """
         Load all furniture objects specified in the json file, these objects are stored as "raw_model.obj" in the
         3D_future_model_path. For lamp the lamp_light_strength value can be changed via the config.
 
         :param data: json data dir. Should contain "furniture"
-        :param models_data: json data dir. Should contain "Categories"
+        :param models_data: json data dir. Should contain "Categories", use the category as name if exists.
+        :param fine_to_coarse_category: json data dir. maps fine category to coarse.
         :param future_model_path: Path to the models used in the 3D-Front dataset.
         :param lamp_light_strength: Strength of the emission shader used in each lamp.
         :param label_mapping: A dict which maps the names of the objects to ids.
@@ -336,10 +344,14 @@ class _Front3DLoader:
                 # load all objects from this .obj file
                 objs = load_obj(filepath=obj_file)
                 # extract the name, which serves as category id
+                fine_used_obj_name = ""
                 used_obj_name = ""
                 if ele["jid"] in models_data.keys():
                     if models_data[ele["jid"]]["category"]:
-                        used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
+                        fine_used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
+                        if fine_used_obj_name in fine_to_coarse_category.keys():
+                            used_obj_name = fine_to_coarse_category[fine_used_obj_name]
+                        used_obj_name = fine_used_obj_name
                 elif "category" in ele:
                     used_obj_name = ele["category"]
                 elif "title" in ele:
