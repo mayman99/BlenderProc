@@ -32,7 +32,7 @@ bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
 files = os.listdir(args.data_dir)
-output_number = 1125
+output_number = 1197
 
 already_written_scenes = []
 if not os.path.exists(os.path.join(args.output_dir, "existing_scenes.json")):
