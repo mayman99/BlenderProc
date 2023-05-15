@@ -13,8 +13,8 @@ def object_inside_camera(location: list, scale: int):
     return False
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="/home/m/ws/data/reduced_cats/", help="Path to where the data should be saved")
-parser.add_argument("data_dir", nargs='?', default="/home/m/ws/3dfront/3D-FRONT/", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\temp", help="Path to where the data should be saved")
+parser.add_argument("data_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT\\3D-FRONT", help="Path to where the data should be saved")
 args = parser.parse_args()
 
 bproc.init()
@@ -32,7 +32,7 @@ bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
 files = os.listdir(args.data_dir)
-output_number = 1821
+output_number = 381
 
 already_written_scenes = []
 if not os.path.exists(os.path.join(args.output_dir, "existing_scenes.json")):
@@ -52,8 +52,8 @@ for f in files:
         # load the front 3D objects
         loaded_objects = bproc.loader.load_front3d(
             json_path=os.path.join(args.data_dir, str(f)),
-            future_model_path="../3dfront/3D-FRONT-models/3D-FUTURE-model-part1/3D-FUTURE-model/",
-            front_3D_texture_path="../3dfront/3D-FRONT-texture/",
+            future_model_path="C:\\Users\\super\\ws\\data\\front_3d\\3D-FUTURE-model",
+            front_3D_texture_path="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT-texture",
             label_mapping=mapping,
             models_info_path=models_info
         )
@@ -86,7 +86,6 @@ for f in files:
             delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
             continue
 
-
         rooms_with_numbers = "A flat containing "
         rooms_with_numbers_reduced = "A flat containing "
         for room_type_id in rooms_objects_count.keys():
@@ -94,14 +93,16 @@ for f in files:
             rooms_with_numbers_reduced += " a " + room_type_id.split("-")[0] + " " + " and "
             for obj_name in rooms_objects_count[room_type_id].keys():
                 # Avoid adding all objects to the text desc of the room.
-                if obj_name not in ['ceiling', 'hole', 'void', 'others', 'wall']:
+                if obj_name not in ['ceiling', 'hole', 'void', 'others', 'wall', 'lamp']:
                     if rooms_objects_count[room_type_id][obj_name] == 1:
                         rooms_with_numbers += "a " + obj_name + " "
                     else:
-                        rooms_with_numbers += str(rooms_objects_count[room_type_id][obj_name]) + " " + obj_name + "s "
+                        if 'bed' in obj_name:
+                            rooms_with_numbers += "a " + obj_name + " "
+                        else:
+                            rooms_with_numbers += str(rooms_objects_count[room_type_id][obj_name]) + " " + obj_name + "s "
             rooms_with_numbers += ". "
             rooms_with_numbers_reduced += ". "
-
 
         meta_data_row = {}
         meta_data_row["file_name"] = str(output_number) + "_class_segmaps.png"
@@ -109,9 +110,16 @@ for f in files:
 
         meta_data_reduced_row = {}
         meta_data_reduced_row["file_name"] = str(output_number) + "_class_segmaps.png"
-        meta_data_reduced_row["text"] = rooms_with_numbers
+        meta_data_reduced_row["text"] = rooms_with_numbers_reduced
 
-        bproc.renderer.set_max_amount_of_samples(1)
+        # # Used for generating image to image templates
+        # for obj_ in bpy.context.scene.objects:
+        #     if  'camera' not in obj_.name.lower() and 'wall' not in obj_.name.lower() and 'floor' not in obj_.name.lower() and 'window' not in obj_.name.lower():
+        #         bpy.ops.object.select_all(action='DESELECT')
+        #         obj_.select_set(True)
+        #         bpy.ops.object.delete()
+
+        bproc.renderer.set_max_amount_of_samples(3)
 
         # data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
         bproc.renderer.enable_segmentation_output(map_by=["class"], default_values={'category_id': 0})
@@ -125,7 +133,7 @@ for f in files:
             f.writelines('\n')
 
         with open(os.path.join(args.output_dir, "metadata_reduced.jsonl"), "a+") as f:
-            json.dump(meta_data_row, f)
+            json.dump(meta_data_reduced_row, f)
             f.writelines('\n')
 
         with open(os.path.join(args.output_dir, "existing_scenes.json"), "w") as output_file:
@@ -137,3 +145,4 @@ for f in files:
 
         delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
         output_number += 1
+    break
