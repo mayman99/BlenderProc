@@ -20,7 +20,7 @@ from blenderproc.python.loader.TextureLoader import load_texture
 
 
 def load_front3d(json_path: str, models_info_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
-                 ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
+                 room_type: str = 'all', ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
     """ Loads the 3D-Front scene specified by the given json file.
 
     :param json_path: Path to the json file, where the house information is stored.
@@ -30,6 +30,7 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
     :param label_mapping: A dict which maps the names of the objects to ids.
     :param ceiling_light_strength: Strength of the emission shader used in the ceiling.
     :param lamp_light_strength: Strength of the emission shader used in each lamp.
+    :param room_type: The room type to load.
     :return: The list of loaded mesh objects.
     """
     json_path = resolve_path(json_path)
@@ -63,13 +64,23 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
 
     if "scene" not in data:
         raise ValueError(f"There is no scene data in this json file: {json_path}")
-    created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
-                                                                   ceiling_light_strength, label_mapping, json_path)
+    
+    if room_type == 'all':
+        created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
+                                                                    ceiling_light_strength, label_mapping, json_path)
 
-    all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
-                                                              lamp_light_strength, label_mapping)
+        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
+                                                                lamp_light_strength, label_mapping)
 
-    created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture)
+        created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture)
+    else:
+        created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
+                                                                    ceiling_light_strength, label_mapping, json_path, room_type)
+
+        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
+                                                                lamp_light_strength, label_mapping)
+
+        created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture, room_type)   
 
     # add an identifier to the obj
     for obj in created_objects:
@@ -138,7 +149,7 @@ class _Front3DLoader:
 
     @staticmethod
     def create_mesh_objects_from_file(data: dict, front_3D_texture_path: str, ceiling_light_strength: float,
-                                      label_mapping: LabelIdMapping, json_path: str) -> List[MeshObject]:
+                                      label_mapping: LabelIdMapping, json_path: str, room_type: str = 'all') -> List[MeshObject]:
         """
         This creates for a given data json block all defined meshes and assigns the correct materials.
         This means that the json file contains some mesh, like walls and floors, which have to built up manually.
@@ -150,8 +161,25 @@ class _Front3DLoader:
         :param ceiling_light_strength: Strength of the emission shader used in the ceiling.
         :param label_mapping: A dict which maps the names of the objects to ids.
         :param json_path: Path to the json file, where the house information is stored.
+        :param room_type: The type of the room, which is used to filter the walls/floors.
         :return: The list of loaded mesh objects.
         """
+
+        # for each room add the walls and floors to a dict
+        rooms_walls_floors = {}
+        selected_room = None
+        for room_id, room in enumerate(data["scene"]["room"]):
+            if room_id not in rooms_walls_floors.keys():
+                rooms_walls_floors[room["type"]] = []
+            # for each object in that room
+            for child in room["children"]:
+                rooms_walls_floors[room["type"]].append(child["ref"])
+
+        if room_type != 'all':
+            for room_id in rooms_walls_floors.keys():
+                if room_type in room_id.lower():
+                    selected_room = room_id
+
         # extract all used materials -> there are more materials defined than used
         used_materials = []
         for mat in data["material"]:
@@ -166,7 +194,12 @@ class _Front3DLoader:
         used_materials_based_on_color = {}
         # materials based on texture to avoid recreating the same material over and over
         used_materials_based_on_texture = {}
+
         for mesh_data in data["mesh"]:
+            if room_type != 'all':
+                if mesh_data["uid"] not in rooms_walls_floors[selected_room]:
+                    continue
+
             # extract the obj name, which also is used as the category_id name
             used_obj_name = mesh_data["type"].strip()
             if used_obj_name == "":
@@ -410,7 +443,7 @@ class _Front3DLoader:
         return all_objs
 
     @staticmethod
-    def move_and_duplicate_furniture(data: dict, all_loaded_furniture: list) -> List[MeshObject]:
+    def move_and_duplicate_furniture(data: dict, all_loaded_furniture: list, room_type: str = 'all') -> List[MeshObject]:
         """
         Move and duplicate the furniture depending on the data in the data json dir.
         After loading each object gets a location based on the data in the json file. Some objects are used more than
@@ -418,6 +451,7 @@ class _Front3DLoader:
 
         :param data: json data dir. Should contain "scene", which should contain "room"
         :param all_loaded_furniture: all objects which have been loaded in load_furniture_objs
+        :param room_type: The type of room to load. Can be "all", "bedroom", "living_room", "dining_room", "kitchen", "bathroom".
         :return: The list of loaded mesh objects.
         """
         # this rotation matrix rotates the given quaternion into the blender coordinate system

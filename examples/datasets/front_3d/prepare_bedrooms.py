@@ -6,8 +6,7 @@ import numpy as np
 import json
 import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
-import MeshObject from blenderproc.python.types.MeshObject
-from blenderproc.python.types.MatrixUtility import Matrix   
+from blenderproc.python.types.MeshObjectUtility import MeshObject
 from typing import Set
 
 def object_inside_camera(location: list, scale: int):
@@ -99,19 +98,9 @@ for f in files:
             future_model_path="C:\\Users\\super\\ws\\data\\front_3d\\3D-FUTURE-model",
             front_3D_texture_path="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT-texture",
             label_mapping=mapping,
-            models_info_path=models_info
+            models_info_path=models_info,
+            room_type="bedroom"
         )
-
-        rooms_objects_count = {}
-        for obj in loaded_objects:
-            obj_name = obj.get_name().lower().split('.')[0]
-            if obj.has_cp("room_type_id") and "others" not in obj_name and object_inside_camera(obj.get_location(), scale):
-                room_id = obj.get_cp("room_type_id")
-
-
-
-
-
 
         output_number += 1
     break
