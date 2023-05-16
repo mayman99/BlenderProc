@@ -17,7 +17,7 @@ from blenderproc.python.types.MeshObjectUtility import MeshObject, create_with_e
 from blenderproc.python.utility.Utility import resolve_path
 from blenderproc.python.loader.ObjectLoader import load_obj
 from blenderproc.python.loader.TextureLoader import load_texture
-
+from blenderproc.python.types.EntityUtility import delete_multiple
 
 def load_front3d(json_path: str, models_info_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
                  room_type: str = 'all', ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
@@ -170,14 +170,14 @@ class _Front3DLoader:
         selected_room = None
         for room_id, room in enumerate(data["scene"]["room"]):
             if room_id not in rooms_walls_floors.keys():
-                rooms_walls_floors[room["type"]] = []
+                rooms_walls_floors[room["type"].lower()] = []
             # for each object in that room
             for child in room["children"]:
-                rooms_walls_floors[room["type"]].append(child["ref"])
+                rooms_walls_floors[room["type"].lower()].append(child["ref"])
 
         if room_type != 'all':
             for room_id in rooms_walls_floors.keys():
-                if room_type in room_id.lower():
+                if room_type in room_id:
                     selected_room = room_id
 
         # extract all used materials -> there are more materials defined than used
@@ -457,6 +457,8 @@ class _Front3DLoader:
         # this rotation matrix rotates the given quaternion into the blender coordinate system
         blender_rot_mat = mathutils.Matrix.Rotation(radians(-90), 4, 'X')
         created_objects = []
+        # list of objects to be deleted
+        to_delete = []
         # for each room
         for room_id, room in enumerate(data["scene"]["room"]):
             # for each object in that room
@@ -471,7 +473,7 @@ class _Front3DLoader:
                             else:
                                 # if it is the first time use the object directly
                                 new_obj = obj
-                            created_objects.append(new_obj)
+
                             new_obj.set_cp("is_used", True)
                             new_obj.set_cp("room_type_id", room["instanceid"])
                             new_obj.set_cp("room_id", room_id)
@@ -484,4 +486,15 @@ class _Front3DLoader:
                             rotation_mat = mathutils.Quaternion(child["rot"]).to_euler().to_matrix().to_4x4()
                             # transform it into the blender coordinate system and then to an euler
                             new_obj.set_rotation_euler((blender_rot_mat @ rotation_mat).to_euler())
+
+                            if room_type != "all":
+                                if room_type not in room["type"].lower():
+                                    to_delete.append(new_obj)
+                                    continue
+                            
+                            created_objects.append(new_obj)
+
+        # delete all objects which are not in the room
+        delete_multiple(to_delete)
+
         return created_objects
