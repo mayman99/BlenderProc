@@ -78,14 +78,14 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
         created_objects += _Front3DLoader.move_and_duplicate_furniture(
             data, all_loaded_furniture)
     else:
-        created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
+        created_objects, room_id = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                        ceiling_light_strength, label_mapping, json_path, room_type)
 
         all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
                                                                   lamp_light_strength, label_mapping)
 
         created_objects += _Front3DLoader.move_and_duplicate_furniture(
-            data, all_loaded_furniture, room_type)
+            data, all_loaded_furniture, room_id)
 
     # add an identifier to the obj
     for obj in created_objects:
@@ -164,6 +164,8 @@ class _Front3DLoader:
 
         It also already adds the lighting for the ceiling
 
+        Always selects the first room if multiple rooms of the same type exists
+
         :param data: json data dir. Must contain "material" and "mesh"
         :param front_3D_texture_path: Path to the 3D-FRONT-texture folder.
         :param ceiling_light_strength: Strength of the emission shader used in the ceiling.
@@ -178,15 +180,20 @@ class _Front3DLoader:
         selected_room = None
         for room_id, room in enumerate(data["scene"]["room"]):
             if room_id not in rooms_walls_floors.keys():
-                rooms_walls_floors[room["type"].lower()] = []
+                rooms_walls_floors[room["instanceid"]] = []
             # for each object in that room
             for child in room["children"]:
-                rooms_walls_floors[room["type"].lower()].append(child["ref"])
+                rooms_walls_floors[room["instanceid"]].append(child["ref"])
 
+        # Always select the first room if multiple rooms of the same type exists
         if room_type != 'all':
             for room_id in rooms_walls_floors.keys():
-                if room_type in room_id:
+                if room_type in room_id.lower():
                     selected_room = room_id
+                    break
+
+        if selected_room is None:
+            return [], None
 
         # extract all used materials -> there are more materials defined than used
         used_materials = []
@@ -366,6 +373,9 @@ class _Front3DLoader:
             # this update converts the upper data into a mesh
             mesh.update()
 
+            # print the mesh location
+            print("Mesh location: {}".format(obj.get_location()))
+
             # the generation might fail if the data does not line up
             # this is not used as even if the data does not line up it is still able to render the objects
             # We assume that not all meshes in the dataset do conform with the mesh standards set in blender
@@ -373,7 +383,7 @@ class _Front3DLoader:
             # if result:
             #    raise Exception("The generation of the mesh: {} failed!".format(used_obj_name))
 
-        return created_objects
+        return created_objects, selected_room
 
     @staticmethod
     def load_furniture_objs(data: dict, models_data: dict, fine_to_coarse_category: dict, future_model_path: str, lamp_light_strength: float,
@@ -478,7 +488,7 @@ class _Front3DLoader:
         return all_objs
 
     @staticmethod
-    def move_and_duplicate_furniture(data: dict, all_loaded_furniture: list, room_type: str = 'all') -> List[MeshObject]:
+    def move_and_duplicate_furniture(data: dict, all_loaded_furniture: list, room_instance_id: str) -> List[MeshObject]:
         """
         Move and duplicate the furniture depending on the data in the data json dir.
         After loading each object gets a location based on the data in the json file. Some objects are used more than
@@ -489,6 +499,9 @@ class _Front3DLoader:
         :param room_type: The type of room to load. Can be "all", "bedroom", "living_room", "dining_room", "kitchen", "bathroom".
         :return: The list of loaded mesh objects.
         """
+        if room_instance_id is None:
+            return []
+
         # this rotation matrix rotates the given quaternion into the blender coordinate system
         blender_rot_mat = mathutils.Matrix.Rotation(radians(-90), 4, 'X')
         created_objects = []
@@ -527,8 +540,9 @@ class _Front3DLoader:
                             new_obj.set_rotation_euler(
                                 (blender_rot_mat @ rotation_mat).to_euler())
 
-                            if room_type != "all":
-                                if room_type not in room["type"].lower():
+                            if room_instance_id is not None:
+                                print(room_instance_id)
+                                if room_instance_id != room["instanceid"]:
                                     to_delete.append(new_obj)
                                     continue
 
@@ -539,6 +553,6 @@ class _Front3DLoader:
 
         # delete all objects which has the name "raw_model"
         delete_multiple([obj for obj in get_all_mesh_objects() if obj.get_name().split(
-            '.')[0] == "raw_model" or obj.get_name().split('.')[0] == "solid"])
+            '.')[0] == "raw_model" or "solid" in obj.get_name()])
 
         return created_objects
