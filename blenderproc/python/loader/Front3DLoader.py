@@ -18,6 +18,8 @@ from blenderproc.python.utility.Utility import resolve_path
 from blenderproc.python.loader.ObjectLoader import load_obj
 from blenderproc.python.loader.TextureLoader import load_texture
 from blenderproc.python.types.EntityUtility import delete_multiple
+from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
+
 
 def load_front3d(json_path: str, models_info_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
                  room_type: str = 'all', ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
@@ -40,9 +42,11 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
     if not os.path.exists(json_path):
         raise FileNotFoundError(f"The given path does not exists: {json_path}")
     if not json_path.endswith(".json"):
-        raise FileNotFoundError(f"The given path does not point to a .json file: {json_path}")
+        raise FileNotFoundError(
+            f"The given path does not point to a .json file: {json_path}")
     if not os.path.exists(future_model_path):
-        raise FileNotFoundError(f"The 3D future model path does not exist: {future_model_path}")
+        raise FileNotFoundError(
+            f"The 3D future model path does not exist: {future_model_path}")
 
     # load data from json file
     with open(json_path, "r", encoding="utf-8") as json_file:
@@ -50,37 +54,38 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
 
     # load category data from json file
     models_info_data = {}
-    fine_to_coarse_category = {'smartcustomizedceiling': 'ceiling', 'ceiling': 'ceiling', 'extrusioncustomizedceilingmodel': 'ceiling', 'customizedceiling': 'ceiling', 
-        'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
-        'hanging chair': 'chair', 'folding chair': 'chair','dressing chair': 'chair','dining chair': 'chair','armchair': 'chair','classic chinese chair': 'chair','lounge chair / cafe chair / office chair': 'chair','lounge chair / book-chair / computer chair': 'chair',
-            'chaise longue sofa':'sofa', 'two-seat sofa':'sofa', 'lazy sofa':'sofa', 'three-seat / multi-person sofa':'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa'
-            , 'sideboard / side cabinet / console table': 'cabinet', 'sideboard / side cabinet / console': 'cabinet', 'drawer chest / corner cabinet': 'cabinet',
-            '200 - on the floor': 'floor','300 - on top of others': 'others','500 - attach to ceiling': 'ceiling','400 - attach to wall': 'floor'}
+    fine_to_coarse_category = {'smartcustomizedceiling': 'ceiling', 'ceiling': 'ceiling', 'extrusioncustomizedceilingmodel': 'ceiling', 'customizedceiling': 'ceiling',
+                               'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
+                               'hanging chair': 'chair', 'folding chair': 'chair', 'dressing chair': 'chair', 'dining chair': 'chair', 'armchair': 'chair', 'classic chinese chair': 'chair', 'lounge chair / cafe chair / office chair': 'chair', 'lounge chair / book-chair / computer chair': 'chair',
+                               'chaise longue sofa': 'sofa', 'two-seat sofa': 'sofa', 'lazy sofa': 'sofa', 'three-seat / multi-person sofa': 'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa', 'sideboard / side cabinet / console table': 'cabinet', 'sideboard / side cabinet / console': 'cabinet', 'drawer chest / corner cabinet': 'cabinet',
+                               '200 - on the floor': 'floor', '300 - on top of others': 'others', '500 - attach to ceiling': 'ceiling', '400 - attach to wall': 'floor'}
     with open(os.path.join(models_info_path, ), "r", encoding="utf-8") as models_json:
         models_data = json.load(models_json)
         for item in models_data:
             models_info_data[item["model_id"]] = item
 
-
     if "scene" not in data:
-        raise ValueError(f"There is no scene data in this json file: {json_path}")
-    
+        raise ValueError(
+            f"There is no scene data in this json file: {json_path}")
+
     if room_type == 'all':
         created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
-                                                                    ceiling_light_strength, label_mapping, json_path)
+                                                                       ceiling_light_strength, label_mapping, json_path)
 
         all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
-                                                                lamp_light_strength, label_mapping)
+                                                                  lamp_light_strength, label_mapping)
 
-        created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture)
+        created_objects += _Front3DLoader.move_and_duplicate_furniture(
+            data, all_loaded_furniture)
     else:
         created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
-                                                                    ceiling_light_strength, label_mapping, json_path, room_type)
+                                                                       ceiling_light_strength, label_mapping, json_path, room_type)
 
         all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
-                                                                lamp_light_strength, label_mapping)
+                                                                  lamp_light_strength, label_mapping)
 
-        created_objects += _Front3DLoader.move_and_duplicate_furniture(data, all_loaded_furniture, room_type)   
+        created_objects += _Front3DLoader.move_and_duplicate_furniture(
+            data, all_loaded_furniture, room_type)
 
     # add an identifier to the obj
     for obj in created_objects:
@@ -118,9 +123,11 @@ class _Front3DLoader:
         if not os.path.exists(hash_folder):
             # download the file
             os.makedirs(hash_folder)
-            warnings.warn(f"This texture: {hash_nr} could not be found it will be downloaded.")
+            warnings.warn(
+                f"This texture: {hash_nr} could not be found it will be downloaded.")
             # replace https with http as ssl connection out of blender are difficult
-            urlretrieve(given_url.replace("https://", "http://"), os.path.join(hash_folder, "texture.png"))
+            urlretrieve(given_url.replace("https://", "http://"),
+                        os.path.join(hash_folder, "texture.png"))
             if not os.path.exists(os.path.join(hash_folder, "texture.png")):
                 raise Exception(f"The texture could not be found, the following url was used: "
                                 f"{front_3D_texture_path}, this is the extracted hash: {hash_nr}, "
@@ -142,7 +149,8 @@ class _Front3DLoader:
         else:
             textures = load_texture(hash_folder_path)
             if len(textures) != 1:
-                raise Exception(f"There is not just one texture: {len(textures)}")
+                raise Exception(
+                    f"There is not just one texture: {len(textures)}")
             ret_used_image = textures[0].image
             saved_image_dict[hash_folder_path] = ret_used_image
         return ret_used_image
@@ -205,15 +213,18 @@ class _Front3DLoader:
             if used_obj_name == "":
                 used_obj_name = "void"
             if "material" not in mesh_data:
-                warnings.warn(f"Material is not defined for {used_obj_name} in this file: {json_path}")
+                warnings.warn(
+                    f"Material is not defined for {used_obj_name} in this file: {json_path}")
                 continue
             # create a new mesh
-            obj = create_with_empty_mesh(used_obj_name, used_obj_name + "_mesh")
+            obj = create_with_empty_mesh(
+                used_obj_name, used_obj_name + "_mesh")
             created_objects.append(obj)
 
             # set two custom properties, first that it is a 3D_future object and second the category_id
             obj.set_cp("is_3D_future", True)
-            obj.set_cp("category_id", label_mapping.id_from_label(used_obj_name.lower()))
+            obj.set_cp("category_id", label_mapping.id_from_label(
+                used_obj_name.lower()))
 
             # get the material uid of the current mesh data
             current_mat = mesh_data["material"]
@@ -227,20 +238,25 @@ class _Front3DLoader:
             if used_mat:
                 if used_mat["texture"]:
                     # extract the has folder is from the url and download it if necessary
-                    hash_folder = _Front3DLoader.extract_hash_nr_for_texture(used_mat["texture"], front_3D_texture_path)
+                    hash_folder = _Front3DLoader.extract_hash_nr_for_texture(
+                        used_mat["texture"], front_3D_texture_path)
                     if hash_folder in used_materials_based_on_texture and "ceiling" not in used_obj_name.lower():
                         mat = used_materials_based_on_texture[hash_folder]
                         obj.add_material(mat)
                     else:
                         # Create a new material
-                        mat = MaterialLoaderUtility.create(name=used_obj_name + "_material")
-                        principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
+                        mat = MaterialLoaderUtility.create(
+                            name=used_obj_name + "_material")
+                        principled_node = mat.get_the_one_node_with_type(
+                            "BsdfPrincipled")
                         if used_mat["color"]:
                             principled_node.inputs["Base Color"].default_value = mathutils.Vector(
                                 used_mat["color"]) / 255.0
 
-                        used_image = _Front3DLoader.get_used_image(hash_folder, saved_images)
-                        mat.set_principled_shader_value("Base Color", used_image)
+                        used_image = _Front3DLoader.get_used_image(
+                            hash_folder, saved_images)
+                        mat.set_principled_shader_value(
+                            "Base Color", used_image)
 
                         if "ceiling" in used_obj_name.lower():
                             mat.make_emissive(ceiling_light_strength,
@@ -251,15 +267,19 @@ class _Front3DLoader:
                             # extract the has folder is from the url and download it if necessary
                             hash_folder = _Front3DLoader.extract_hash_nr_for_texture(used_mat["normaltexture"],
                                                                                      front_3D_texture_path)
-                            used_image = _Front3DLoader.get_used_image(hash_folder, saved_normal_images)
+                            used_image = _Front3DLoader.get_used_image(
+                                hash_folder, saved_normal_images)
 
                             # create normal texture
-                            normal_texture = MaterialLoaderUtility.create_image_node(mat.nodes, used_image, True)
+                            normal_texture = MaterialLoaderUtility.create_image_node(
+                                mat.nodes, used_image, True)
                             normal_map = mat.nodes.new("ShaderNodeNormalMap")
                             normal_map.inputs["Strength"].default_value = 1.0
-                            mat.links.new(normal_texture.outputs["Color"], normal_map.inputs["Color"])
+                            mat.links.new(
+                                normal_texture.outputs["Color"], normal_map.inputs["Color"])
                             # connect normal texture to principled shader
-                            mat.set_principled_shader_value("Normal", normal_map.outputs["Normal"])
+                            mat.set_principled_shader_value(
+                                "Normal", normal_map.outputs["Normal"])
 
                         obj.add_material(mat)
                         used_materials_based_on_texture[hash_folder] = mat
@@ -270,10 +290,13 @@ class _Front3DLoader:
                         mat = used_materials_based_on_color[used_hash]
                     else:
                         # Create a new material
-                        mat = MaterialLoaderUtility.create(name=used_obj_name + "_material")
+                        mat = MaterialLoaderUtility.create(
+                            name=used_obj_name + "_material")
                         # create a principled node and set the default color
-                        principled_node = mat.get_the_one_node_with_type("BsdfPrincipled")
-                        principled_node.inputs["Base Color"].default_value = mathutils.Vector(used_mat["color"]) / 255.0
+                        principled_node = mat.get_the_one_node_with_type(
+                            "BsdfPrincipled")
+                        principled_node.inputs["Base Color"].default_value = mathutils.Vector(
+                            used_mat["color"]) / 255.0
                         # if the object is a ceiling add some light output
                         if "ceiling" in used_obj_name.lower():
                             mat.make_emissive(ceiling_light_strength,
@@ -296,7 +319,8 @@ class _Front3DLoader:
             vertices = np.reshape(np.array(vert), [num_vertices, 3])
             normal = np.reshape(np.array(normal), [num_vertices, 3])
             # flip the first and second value
-            vertices[:, 1], vertices[:, 2] = vertices[:, 2], vertices[:, 1].copy()
+            vertices[:, 1], vertices[:, 2] = vertices[:,
+                                                      2], vertices[:, 1].copy()
             normal[:, 1], normal[:, 2] = normal[:, 2], normal[:, 1].copy()
             # reshape back to a long list
             vertices = np.reshape(vertices, [num_vertices * 3])
@@ -324,7 +348,8 @@ class _Front3DLoader:
             mesh.polygons.foreach_set("loop_total", loop_total)
 
             # the uv coordinates are reshaped then the face coords are extracted
-            uv_mesh_data = [float(ele) for ele in mesh_data["uv"] if ele is not None]
+            uv_mesh_data = [float(ele)
+                            for ele in mesh_data["uv"] if ele is not None]
             # bb1737bf-dae6-4215-bccf-fab6f584046b.json includes one mesh which only has no UV mapping
             if uv_mesh_data:
                 uv = np.reshape(np.array(uv_mesh_data), [num_vertices, 2])
@@ -335,7 +360,8 @@ class _Front3DLoader:
                 mesh.uv_layers.new(name="new_uv_layer")
                 mesh.uv_layers[-1].data.foreach_set("uv", used_uvs)
             else:
-                warnings.warn(f"This mesh {obj.get_name()} does not have a specified uv map!")
+                warnings.warn(
+                    f"This mesh {obj.get_name()} does not have a specified uv map!")
 
             # this update converts the upper data into a mesh
             mesh.update()
@@ -380,7 +406,8 @@ class _Front3DLoader:
                 used_obj_name = ""
                 if ele["jid"] in models_data.keys():
                     if models_data[ele["jid"]]["category"]:
-                        used_obj_name = models_data[ele["jid"]]["category"].lower().strip()
+                        used_obj_name = models_data[ele["jid"]
+                                                    ]["category"].lower().strip()
                 elif "category" in ele:
                     used_obj_name = ele["category"]
                 elif "title" in ele:
@@ -402,14 +429,17 @@ class _Front3DLoader:
                     # is needed to only clone the second appearance of this object
                     obj.set_cp("is_used", False)
                     obj.set_cp("is_3D_future", True)
-                    obj.set_cp("3D_future_type", "Non-Object")  # is an non object used for the interesting score
+                    # is an non object used for the interesting score
+                    obj.set_cp("3D_future_type", "Non-Object")
                     # set the category id based on the used obj name
-                    obj.set_cp("category_id", label_mapping.id_from_label(used_obj_name.lower()))
+                    obj.set_cp("category_id", label_mapping.id_from_label(
+                        used_obj_name.lower()))
                     # walk over all materials
                     for mat in obj.get_materials():
                         if mat is None:
                             continue
-                        principled_node = mat.get_nodes_with_type("BsdfPrincipled")
+                        principled_node = mat.get_nodes_with_type(
+                            "BsdfPrincipled")
                         if "bed" in used_obj_name.lower() or "sofa" in used_obj_name.lower():
                             if len(principled_node) == 1:
                                 principled_node[0].inputs["Roughness"].default_value = 0.5
@@ -425,21 +455,26 @@ class _Front3DLoader:
 
                         # Front3d .mtl files contain emission color which make the object mistakenly emissive
                         # => Reset the emission color
-                        principled_node.inputs["Emission"].default_value[:3] = [0, 0, 0]
+                        principled_node.inputs["Emission"].default_value[:3] = [
+                            0, 0, 0]
 
                         # For each a texture node
                         image_node = mat.new_node('ShaderNodeTexImage')
                         # and load the texture.png
-                        base_image_path = os.path.join(folder_path, "texture.png")
-                        image_node.image = bpy.data.images.load(base_image_path, check_existing=True)
-                        mat.link(image_node.outputs['Color'], principled_node.inputs['Base Color'])
+                        base_image_path = os.path.join(
+                            folder_path, "texture.png")
+                        image_node.image = bpy.data.images.load(
+                            base_image_path, check_existing=True)
+                        mat.link(
+                            image_node.outputs['Color'], principled_node.inputs['Base Color'])
                         # if the object is a lamp, do the same as for the ceiling and add an emission shader
                         if is_lamp:
                             mat.make_emissive(lamp_light_strength)
 
                 all_objs.extend(objs)
             elif "7e101ef3-7722-4af8-90d5-7c562834fabd" in obj_file:
-                warnings.warn(f"This file {obj_file} was skipped as it can not be read by blender.")
+                warnings.warn(
+                    f"This file {obj_file} was skipped as it can not be read by blender.")
         return all_objs
 
     @staticmethod
@@ -477,24 +512,33 @@ class _Front3DLoader:
                             new_obj.set_cp("is_used", True)
                             new_obj.set_cp("room_type_id", room["instanceid"])
                             new_obj.set_cp("room_id", room_id)
-                            new_obj.set_cp("3D_future_type", "Object")  # is an object used for the interesting score
-                            new_obj.set_cp("coarse_grained_class", new_obj.get_cp("category_id"))
+                            # is an object used for the interesting score
+                            new_obj.set_cp("3D_future_type", "Object")
+                            new_obj.set_cp("coarse_grained_class",
+                                           new_obj.get_cp("category_id"))
                             # this flips the y and z coordinate to bring it to the blender coordinate system
-                            new_obj.set_location(mathutils.Vector(child["pos"]).xzy)
+                            new_obj.set_location(
+                                mathutils.Vector(child["pos"]).xzy)
                             new_obj.set_scale(child["scale"])
                             # extract the quaternion and convert it to a rotation matrix
-                            rotation_mat = mathutils.Quaternion(child["rot"]).to_euler().to_matrix().to_4x4()
+                            rotation_mat = mathutils.Quaternion(
+                                child["rot"]).to_euler().to_matrix().to_4x4()
                             # transform it into the blender coordinate system and then to an euler
-                            new_obj.set_rotation_euler((blender_rot_mat @ rotation_mat).to_euler())
+                            new_obj.set_rotation_euler(
+                                (blender_rot_mat @ rotation_mat).to_euler())
 
                             if room_type != "all":
                                 if room_type not in room["type"].lower():
                                     to_delete.append(new_obj)
                                     continue
-                            
+
                             created_objects.append(new_obj)
 
         # delete all objects which are not in the room
         delete_multiple(to_delete)
+
+        # delete all objects which has the name "raw_model"
+        delete_multiple([obj for obj in get_all_mesh_objects() if obj.get_name().split(
+            '.')[0] == "raw_model" or obj.get_name().split('.')[0] == "solid"])
 
         return created_objects
