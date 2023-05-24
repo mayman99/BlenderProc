@@ -39,7 +39,7 @@ id,name
 37,extrusioncustomizedceilingmodel
 38,baseboard
 39,front
-40,wallinner
+95,wallinner
 41,basin
 42,bath
 43,customizedpersonalizedmodel
@@ -48,7 +48,7 @@ id,name
 46,sofa
 47,kitchen cabinet
 48,cabinet
-49,walltop
+95,walltop
 50,chair
 51,floor
 52,customizedceiling
@@ -92,7 +92,7 @@ id,name
 90,customizedfixedfurniture
 91,bookcase / jewelry armoire
 92,mirror
-93,wallbottom
+95,wallbottom
 94,barstool
 95,wallouter
 96,l-shaped sofa
