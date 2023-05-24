@@ -50,8 +50,8 @@ class InitializerModule(Module):
     def run(self):
         horizon_color = self.config.get_list("horizon_color", [0.05, 0.05, 0.05])
         compute_device = self.config.get_string("compute_device", "GPU")
-        compute_device_type = self.config.get_string("compute_device_type", None)
-        use_experimental_features = self.config.get_bool("use_experimental_features", False)
+        compute_device_type = self.config.get_string("compute_device_type", "CUDA")
+        use_experimental_features = self.config.get_bool("use_experimental_features", True)
         init(clean_up_scene=False)
         RendererUtility.set_world_background(horizon_color)
         RendererUtility.set_render_devices(compute_device == "CPU", compute_device_type)

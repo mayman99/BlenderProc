@@ -200,14 +200,14 @@ def render_segmap(output_dir: Optional[str] = None, temp_dir: Optional[str] = No
                         combined_result_map.append(resulting_map)
                         return_dict.setdefault(f"{org_attribute}_segmaps{suffix}", []).append(resulting_map)
 
-                fname = final_segmentation_file_path + f"{frame:04d}" + suffix
+                # fname = final_segmentation_file_path + f"{frame:04d}" + suffix
                 # combine all resulting images to one image
                 resulting_map = np.stack(combined_result_map, axis=2)
                 # remove the unneeded third dimension
                 if resulting_map.shape[2] == 1:
                     resulting_map = resulting_map[:, :, 0]
                 # TODO: Remove unnecessary save when we give up backwards compatibility
-                np.save(fname, resulting_map)
+                # np.save(fname, resulting_map)
 
             if there_was_an_instance_rendering:
                 mappings = []

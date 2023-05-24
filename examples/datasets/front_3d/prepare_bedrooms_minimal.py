@@ -7,12 +7,12 @@ from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 import json
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\bedrooms_minimal", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT\\3D-FRONT", help="Path to where the data should be saved")
 args = parser.parse_args()
 
 bproc.init()
-mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "3D_front_mapping_merged_new.csv"))
+mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "bedroom_minimal.csv"))
 models_info = bproc.utility.resolve_resource(os.path.join("front_3D", "model_info.json"))
 mapping = bproc.utility.LabelIdMapping.from_csv(mapping_file)
 
@@ -107,7 +107,6 @@ for f in files:
                 if index.isdigit():
                     frame_offset = max(frame_offset, int(index) + 1)
 
-        # TODO: need to remove duplicate namings because objects are not yet merged, e.g. a [bed, bed, bed, bed]
         text = 'segmentation map, orthographic view, furnished bedroom, '
         for obj in loaded_objects:
             obj_name = obj.get_name().split('.')[0].lower()

@@ -82,7 +82,7 @@ for f in files:
             for obj_name in rooms_objects_count[room_type_id].keys():
                 objects_rendered += rooms_objects_count[room_type_id][obj_name]
 
-        if objects_rendered<10:
+        if objects_rendered < 10:
             delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
             continue
 

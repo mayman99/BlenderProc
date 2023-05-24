@@ -1,22 +1,63 @@
 import h5py
 import numpy as np
 import os
-from PIL import Image
 import cv2
+import csv
 
-data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp'
-output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp'
-points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\points.npy")
+data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms'
+output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms\\images\\new_images'
+points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D\\bedroom_3d_new_method_27.npy")
+points_max = points.shape[0] - 1
 files = os.listdir(data_path)
 
+old_id_to_cat = {}
+old_cat_to_id = {}
+new_id_to_cat = {}
+new_cat_to_id = {}
+path = 'C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D'
+old_file = '3D_front_mapping_merged_new.csv'
+new_file = 'bedroom_minimal.csv'
+
+# TODO: add more categories
+necessary_cats = ['bed']
+print('necessary cats: include ', necessary_cats)
+
+with open(os.path.join(path, old_file), 'r', encoding="utf-8") as csv_file:
+    reader = csv.DictReader(csv_file)
+    for row in reader:
+        old_cat_to_id[row["name"]] = int(row["id"])
+        old_id_to_cat[row["id"]] = row["name"]
+
+with open(os.path.join(path, new_file), 'r', encoding="utf-8") as csv_file:
+    reader = csv.DictReader(csv_file)
+    for row in reader:
+        new_cat_to_id[row["name"]] = int(row["id"])
+        new_id_to_cat[row["id"]] = row["name"]
+
+def convert_from_old_csv_mapping(old_id: int):
+    old_cat = old_id_to_cat[str(old_id)]
+    if old_cat not in new_cat_to_id:
+        return points_max
+    return new_cat_to_id[old_cat]
+
 for f in files:
-    if 'hdf5' in f:
+    necessary_cats_exists = False
+    if '.hdf5' in f:
         hdf = h5py.File(os.path.join(data_path, f),'r')
-        color = np.array(hdf["colors"])
         np_array = np.array(hdf["class_segmaps"])
         rgb_img = np.zeros((512, 512, 3), dtype='uint8')
         for pixel_x in range(np_array.shape[0]):
             for pixel_y in range(np_array.shape[1]):
-                rgb_img[pixel_x][pixel_y] = points[np_array[pixel_x][pixel_y]]
-        cv2.imwrite(os.path.join(output_path, f.replace('.hdf5', '.png')), rgb_img)
-        cv2.imwrite(os.path.join(output_path, f.replace('.hdf5', '_color.png')), color)
+                v = np_array[pixel_x][pixel_y]
+                new_id = convert_from_old_csv_mapping(v)
+
+                if v in [17, 20, 67, 87, 88, 70, 101, 108]:
+                    necessary_cats_exists = True
+
+                if new_id > len(points):
+                    rgb_img[pixel_x][pixel_y] = points[points_max]
+                else:
+                    rgb_img[pixel_x][pixel_y] = points[new_id]
+
+        if necessary_cats_exists:
+            cv2.imwrite(os.path.join(output_path, f.split('.')[0]+'.png'), rgb_img)
