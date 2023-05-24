@@ -20,7 +20,6 @@ from blenderproc.python.loader.TextureLoader import load_texture
 from blenderproc.python.types.EntityUtility import delete_multiple
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 
-
 def load_front3d(json_path: str, models_info_path: str, future_model_path: str, front_3D_texture_path: str, label_mapping: LabelIdMapping,
                  room_type: str = 'all', ceiling_light_strength: float = 0.8, lamp_light_strength: float = 7.0) -> List[MeshObject]:
     """ Loads the 3D-Front scene specified by the given json file.
@@ -54,11 +53,6 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
 
     # load category data from json file
     models_info_data = {}
-    fine_to_coarse_category = {'smartcustomizedceiling': 'ceiling', 'ceiling': 'ceiling', 'extrusioncustomizedceilingmodel': 'ceiling', 'customizedceiling': 'ceiling',
-                               'kids bed': 'bed', 'footstool / sofastool / bed end stool / stool': 'bed', 'double bed': 'bed', 'single bed': 'bed', 'bunk bed': 'bed', 'bed frame': 'bed', 'king-size bed': 'bed', 'couch bed': 'bed',
-                               'hanging chair': 'chair', 'folding chair': 'chair', 'dressing chair': 'chair', 'dining chair': 'chair', 'armchair': 'chair', 'classic chinese chair': 'chair', 'lounge chair / cafe chair / office chair': 'chair', 'lounge chair / book-chair / computer chair': 'chair',
-                               'chaise longue sofa': 'sofa', 'two-seat sofa': 'sofa', 'lazy sofa': 'sofa', 'three-seat / multi-person sofa': 'sofa', 'three-seat / multi-seat sofa': 'sofa', 'loveseat sofa': 'sofa', 'sideboard / side cabinet / console table': 'cabinet', 'sideboard / side cabinet / console': 'cabinet', 'drawer chest / corner cabinet': 'cabinet',
-                               '200 - on the floor': 'floor', '300 - on top of others': 'others', '500 - attach to ceiling': 'ceiling', '400 - attach to wall': 'floor'}
     with open(os.path.join(models_info_path, ), "r", encoding="utf-8") as models_json:
         models_data = json.load(models_json)
         for item in models_data:
@@ -69,19 +63,18 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
             f"There is no scene data in this json file: {json_path}")
 
     if room_type == 'all':
-        created_objects = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
+        created_objects, _ = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                        ceiling_light_strength, label_mapping, json_path)
 
-        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
+        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, future_model_path,
                                                                   lamp_light_strength, label_mapping)
-
         created_objects += _Front3DLoader.move_and_duplicate_furniture(
-            data, all_loaded_furniture)
+            data, all_loaded_furniture, None)
     else:
         created_objects, room_id = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                        ceiling_light_strength, label_mapping, json_path, room_type)
 
-        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, fine_to_coarse_category, future_model_path,
+        all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, future_model_path,
                                                                   lamp_light_strength, label_mapping)
 
         created_objects += _Front3DLoader.move_and_duplicate_furniture(
@@ -192,9 +185,6 @@ class _Front3DLoader:
                     selected_room = room_id
                     break
 
-        if selected_room is None:
-            return [], None
-
         # extract all used materials -> there are more materials defined than used
         used_materials = []
         for mat in data["material"]:
@@ -211,7 +201,7 @@ class _Front3DLoader:
         used_materials_based_on_texture = {}
 
         for mesh_data in data["mesh"]:
-            if room_type != 'all':
+            if room_type != 'all' and selected_room is not None:
                 if mesh_data["uid"] not in rooms_walls_floors[selected_room]:
                     continue
 
@@ -373,9 +363,6 @@ class _Front3DLoader:
             # this update converts the upper data into a mesh
             mesh.update()
 
-            # print the mesh location
-            print("Mesh location: {}".format(obj.get_location()))
-
             # the generation might fail if the data does not line up
             # this is not used as even if the data does not line up it is still able to render the objects
             # We assume that not all meshes in the dataset do conform with the mesh standards set in blender
@@ -386,7 +373,7 @@ class _Front3DLoader:
         return created_objects, selected_room
 
     @staticmethod
-    def load_furniture_objs(data: dict, models_data: dict, fine_to_coarse_category: dict, future_model_path: str, lamp_light_strength: float,
+    def load_furniture_objs(data: dict, models_data: dict, future_model_path: str, lamp_light_strength: float,
                             label_mapping: LabelIdMapping) -> List[MeshObject]:
         """
         Load all furniture objects specified in the json file, these objects are stored as "raw_model.obj" in the
@@ -394,7 +381,6 @@ class _Front3DLoader:
 
         :param data: json data dir. Should contain "furniture"
         :param models_data: json data dir. Should contain "Categories", use the category as name if exists.
-        :param fine_to_coarse_category: json data dir. maps fine category to coarse.
         :param future_model_path: Path to the models used in the 3D-Front dataset.
         :param lamp_light_strength: Strength of the emission shader used in each lamp.
         :param label_mapping: A dict which maps the names of the objects to ids.
@@ -412,6 +398,27 @@ class _Front3DLoader:
             if os.path.exists(obj_file) and not "7e101ef3-7722-4af8-90d5-7c562834fabd" in obj_file:
                 # load all objects from this .obj file
                 objs = load_obj(filepath=obj_file)
+                # bpy.ops.object.select_all(action='DESELECT')
+                # # Select the objects to merge
+                # for obj in objs:
+                #     obj.blender_obj.select_set(True)
+                # if there are more than one object merge them  
+                if len(objs) > 1:
+                    # context = {}
+                    # # save selection
+                    # context["object"] = context["active_object"] = objs[0].blender_obj
+                    # # select all objects which will be merged with the target
+                    # context["selected_objects"] = context["selected_editable_objects"] = [obj.blender_obj for obj in objs] + \
+                    #                                                                     [objs[0].blender_obj]
+                    # # execute the joining operation
+                    # bpy.ops.object.join(context)
+
+                    bpy.context.view_layer.objects.active = objs[0].blender_obj
+                    # Merge the selected objects into one object
+                    bpy.ops.object.join()
+                    # The merged object will be the active object
+                    objs = [MeshObject(bpy.context.view_layer.objects.active)]
+
                 # extract the name, which serves as category id
                 used_obj_name = ""
                 if ele["jid"] in models_data.keys():
@@ -427,9 +434,6 @@ class _Front3DLoader:
                 if used_obj_name == "":
                     used_obj_name = "others"
                     continue
-
-                if used_obj_name in fine_to_coarse_category.keys():
-                    used_obj_name = fine_to_coarse_category[used_obj_name]
 
                 for obj in objs:
                     obj.set_name(used_obj_name)
@@ -499,9 +503,6 @@ class _Front3DLoader:
         :param room_type: The type of room to load. Can be "all", "bedroom", "living_room", "dining_room", "kitchen", "bathroom".
         :return: The list of loaded mesh objects.
         """
-        if room_instance_id is None:
-            return []
-
         # this rotation matrix rotates the given quaternion into the blender coordinate system
         blender_rot_mat = mathutils.Matrix.Rotation(radians(-90), 4, 'X')
         created_objects = []
@@ -541,7 +542,6 @@ class _Front3DLoader:
                                 (blender_rot_mat @ rotation_mat).to_euler())
 
                             if room_instance_id is not None:
-                                print(room_instance_id)
                                 if room_instance_id != room["instanceid"]:
                                     to_delete.append(new_obj)
                                     continue

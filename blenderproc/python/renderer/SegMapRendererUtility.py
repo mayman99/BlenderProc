@@ -4,7 +4,6 @@ import csv
 import os
 from typing import List, Tuple, Union, Dict, Optional, Any
 
-import random
 import bpy
 import mathutils
 import numpy as np
@@ -13,9 +12,9 @@ from blenderproc.python.utility.BlenderUtility import load_image, get_all_blende
 from blenderproc.python.material import MaterialLoaderUtility
 from blenderproc.python.renderer import RendererUtility
 from blenderproc.python.utility.Utility import Utility, UndoAfterExecution
-from blenderproc.python.utility.LabelIdMapping import LabelIdMapping
 
-def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = None, temp_dir: Optional[str] = None,
+
+def render_segmap(output_dir: Optional[str] = None, temp_dir: Optional[str] = None,
                   map_by: Union[str, List[str]] = "class",
                   default_values: Optional[Dict[str, int]] = None, file_prefix: str = "segmap_",
                   output_key: str = "segmap", segcolormap_output_file_prefix: str = "instance_attribute_map_",
@@ -37,9 +36,9 @@ def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = Non
                                                  blender does not allow negative values for colors, we use \
                                                  [0, 2048] ** 3 as our color space which allows ~8 billion \
                                                  different colors/objects. This should be enough.
-    :param label_mapping: A dict which maps the names of the objects to ids.
     :return: dict of lists of segmaps and (for instance segmentation) segcolormaps
     """
+
     if output_dir is None:
         output_dir = Utility.get_temporary_directory()
     if temp_dir is None:
@@ -62,17 +61,10 @@ def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = Non
         # Get objects with meshes (i.e. not lights or cameras)
         objs_with_mats = get_all_blender_mesh_objects()
 
-        # result = _colorize_objects_for_instance_segmentation(objs_with_mats, use_alpha_channel,
-        #                                                      render_colorspace_size_per_dimension)
-
-        result = _colorize_objects_for_semantic_segmentation(objs_with_mats, use_alpha_channel,
-                                                        render_colorspace_size_per_dimension, label_mapping)
-
+        result = _colorize_objects_for_instance_segmentation(objs_with_mats, use_alpha_channel,
+                                                             render_colorspace_size_per_dimension)
         colors, num_splits_per_dimension, objects = result
-        # print(objects)
-        # print(len(objects))
-        # print(len(np.unique(colors, axis=0)))
-        # return
+
         bpy.context.scene.cycles.filter_width = 0.0
 
         if use_alpha_channel:
@@ -140,6 +132,7 @@ def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = Non
                     was_used = False
                     current_attribute = attributes[channel_id]
                     org_attribute = current_attribute
+
                     # if the class is used the category_id attribute is evaluated
                     if current_attribute == "class":
                         current_attribute = "cp_category_id"
@@ -170,7 +163,6 @@ def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = Non
                             # get the corresponding object via the id
                             current_obj = objects[object_id]
                             # if the current obj has a attribute with that name -> get it
-                            # print(attribute)
                             if hasattr(current_obj, attribute):
                                 value = getattr(current_obj, attribute)
                             # if the current object has a custom property with that name -> get it
@@ -227,7 +219,6 @@ def render_segmap(label_mapping: LabelIdMapping, output_dir: Optional[str] = Non
                 # TODO: Remove unnecessary csv file when we give up backwards compatibility
                 csv_file_path = os.path.join(output_dir, segcolormap_output_file_prefix + f"{frame:04d}.csv")
                 with open(csv_file_path, 'w', newline='', encoding="utf-8") as csvfile:
-                    print('writting csv file',csv_file_path)
                     # get from the first element the used field names
                     fieldnames = ["idx"]
                     # get all used object element keys
@@ -328,36 +319,6 @@ def _set_world_background_color(color: List[float]):
     links.new(background_node.outputs["Background"], output_node.inputs["Surface"])
 
 
-def _colorize_objects_for_semantic_segmentation(objects: List[bpy.types.Object], use_alpha_channel: bool,
-                                                render_colorspace_size_per_dimension: int, label_mapping: LabelIdMapping) \
-        -> Tuple[List[List[int]], int, List[bpy.types.Object]]:
-    """ Sets a different color to each object.
-
-    :param objects: A list of objects.
-    :param use_alpha_channel: If true, the alpha channel stored in .png textures is used.
-    :param render_colorspace_size_per_dimension: The limit of the colorspace to use per dimension for generating colors.
-    :return: The num_splits_per_dimension of the spanned color space, the color map
-    """
-    # + 1 for the background
-    colors, num_splits_per_dimension = Utility.generate_equidistant_values(len(objects) + 1,
-                                                                           render_colorspace_size_per_dimension)
-    # this list maps ids in the image back to the objects
-    color_map = []
-
-    # Set world background label, which is always label zero
-    _set_world_background_color(colors[0])
-    color_map.append(bpy.context.scene.world)  # add the world background as an object to this list
-
-    for idx, obj in enumerate(objects):
-            name = obj.name.split('.')[0].lower()
-            # if 'wall' in name:
-            c = label_mapping._label_id_map[name]
-            color = [c*10, 0, c*20]
-            _colorize_object(obj, color, use_alpha_channel)
-            color_map.append(obj)
-
-    return colors, num_splits_per_dimension, color_map
-
 def _colorize_objects_for_instance_segmentation(objects: List[bpy.types.Object], use_alpha_channel: bool,
                                                 render_colorspace_size_per_dimension: int) \
         -> Tuple[List[List[int]], int, List[bpy.types.Object]]:
@@ -379,13 +340,7 @@ def _colorize_objects_for_instance_segmentation(objects: List[bpy.types.Object],
     color_map.append(bpy.context.scene.world)  # add the world background as an object to this list
 
     for idx, obj in enumerate(objects):
-        if 'wall' in obj.name:
-            _colorize_object(obj, [colors[idx + 1]], use_alpha_channel)
-            print(obj.name, " color: ", colors[idx + 1])
-            color_map.append(obj)
-        else:
-            _colorize_object(obj, [colors[idx + 1]], use_alpha_channel)
-            print(obj.name, " color: ", colors[idx + 1])
-            color_map.append(obj)
+        _colorize_object(obj, colors[idx + 1], use_alpha_channel)
+        color_map.append(obj)
 
     return colors, num_splits_per_dimension, color_map
