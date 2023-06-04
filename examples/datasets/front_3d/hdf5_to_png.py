@@ -4,9 +4,9 @@ import os
 import cv2
 import csv
 
-data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms'
-output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms\\images\\new_images'
-points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D\\bedroom_3d_new_method_27.npy")
+data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\25_5_2023_bedrooms'
+output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\25_5_2023_bedrooms\\lhs_27'
+points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D\\lhs_27.npy")
 points_max = points.shape[0] - 1
 files = os.listdir(data_path)
 
@@ -15,12 +15,8 @@ old_cat_to_id = {}
 new_id_to_cat = {}
 new_cat_to_id = {}
 path = 'C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D'
-old_file = '3D_front_mapping_merged_new.csv'
+old_file = '3D_front_mapping_merged_new_complete.csv'
 new_file = 'bedroom_minimal.csv'
-
-# TODO: add more categories
-necessary_cats = ['bed']
-print('necessary cats: include ', necessary_cats)
 
 with open(os.path.join(path, old_file), 'r', encoding="utf-8") as csv_file:
     reader = csv.DictReader(csv_file)
@@ -51,13 +47,9 @@ for f in files:
                 v = np_array[pixel_x][pixel_y]
                 new_id = convert_from_old_csv_mapping(v)
 
-                if v in [17, 20, 67, 87, 88, 70, 101, 108]:
-                    necessary_cats_exists = True
-
                 if new_id > len(points):
                     rgb_img[pixel_x][pixel_y] = points[points_max]
                 else:
                     rgb_img[pixel_x][pixel_y] = points[new_id]
 
-        if necessary_cats_exists:
-            cv2.imwrite(os.path.join(output_path, f.split('.')[0]+'.png'), rgb_img)
+        cv2.imwrite(os.path.join(output_path, f.split('.')[0]+'.png'), rgb_img)

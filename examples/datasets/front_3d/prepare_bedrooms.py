@@ -7,12 +7,12 @@ from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 import json
 
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\yes_text_data_all_bedrooms", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\25_5_livingroom", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT\\3D-FRONT", help="Path to where the data should be saved")
 args = parser.parse_args()
 
 bproc.init()
-mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "3D_front_mapping_merged_new.csv"))
+mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "3D_front_mapping_merged_new_complete.csv"))
 models_info = bproc.utility.resolve_resource(os.path.join("front_3D", "model_info.json"))
 mapping = bproc.utility.LabelIdMapping.from_csv(mapping_file)
 
@@ -37,28 +37,43 @@ else:
         _ = json.load(f)
         already_written_scenes = _['files']
 
-def should_skip_object(object_name:str):
-    if 'floor' in object_name.lower():
-        return True
-    if 'wall' in object_name.lower():
-        return True
-    if 'ceiling' in object_name.lower():
-        return True
-    if 'others' in object_name.lower():
-        return True
-    if 'solid' in object_name.lower():
-        return True
-    if 'baseboard' in object_name.lower():
-        return True
-    if 'pocket' in object_name.lower():
-        return True
-    if 'hole' in object_name.lower():
-        return True
-    if 'slabside' in object_name.lower():
-        return True
-    if 'lamp' in object_name.lower():
-        return True
-    return False
+def should_include(object_name:str):
+    return True
+    # if 'bed' in object_name.lower():
+    #     return True
+    # if 'stool' in object_name.lower():
+    #     return True
+    # if 'chair' in object_name.lower():
+    #     return True
+    # if 'table' in object_name.lower():
+    #     return True
+    # if 'mirror' in object_name.lower():
+    #     return True
+    # if 'cabinet' in object_name.lower():
+    #     return True
+    # if 'sofa' in object_name.lower():
+    #     return True
+    # if 'coach' in object_name.lower():
+    #     return True
+    # if 'unit' in object_name.lower():
+    #     return True
+    # if 'chest' in object_name.lower():
+    #     return True
+    # if 'drawer' in object_name.lower():
+    #     return True
+    # if 'desk' in object_name.lower():
+    #     return True
+    # if 'shelf' in object_name.lower():
+    #     return True
+    # if 'nightstand' in object_name.lower():
+    #     return True
+    # if 'wardrobe' in object_name.lower():
+    #     return True
+    # if 'bookcase' in object_name.lower():
+    #     return True
+    # if 'jewelry' in object_name.lower():
+    #     return True
+    # return False
 
 for f in files:
     if 'json' in f:
@@ -76,7 +91,7 @@ for f in files:
             front_3D_texture_path="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT-texture",
             label_mapping=mapping,
             models_info_path=models_info,
-            room_type="bedroom"
+            room_type="livingroom"
         )
 
         # Dont train on bedrooms without beds, or with too few objects
@@ -107,16 +122,19 @@ for f in files:
                 if index.isdigit():
                     frame_offset = max(frame_offset, int(index) + 1)
 
-        # TODO: need to remove duplicate namings because objects are not yet merged, e.g. a [bed, bed, bed, bed]
+        # TODO: need to remove duplicate namings because objects are not yet merged, e.g. a [bed, bed frame, bed, bed]
+        # Add each object name to text description
+        # don't add an object more than thrice
+        added_objects = {}
         text = 'segmentation map, orthographic view, furnished bedroom, '
         for obj in loaded_objects:
             obj_name = obj.get_name().split('.')[0].lower()
-            if should_skip_object(obj_name):
-                continue
-            text += obj_name + ', '
+            added_objects[obj_name] = added_objects.get(obj_name, 0) + 1
+            if should_include(obj_name) and added_objects.get(obj_name, 0) < 3:
+                text += obj_name + ', '
 
         meta_data_row = {}
-        meta_data_row["file_name"] = str(frame_offset) + ".png"
+        meta_data_row["file_name"] = str(frame_offset) + ".png" 
         meta_data_row["text"] = text
 
         data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])

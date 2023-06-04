@@ -434,7 +434,9 @@ class _Front3DLoader:
                 if used_obj_name == "":
                     used_obj_name = "others"
                     continue
-
+                
+                if 'cabinet' in used_obj_name.lower():
+                    print(ele)
                 for obj in objs:
                     obj.set_name(used_obj_name)
                     # add some custom properties
@@ -540,6 +542,9 @@ class _Front3DLoader:
                             # transform it into the blender coordinate system and then to an euler
                             new_obj.set_rotation_euler(
                                 (blender_rot_mat @ rotation_mat).to_euler())
+
+                            if 'cabinet' in new_obj.get_name().lower():
+                                print(new_obj.get_name())
 
                             if room_instance_id is not None:
                                 if room_instance_id != room["instanceid"]:

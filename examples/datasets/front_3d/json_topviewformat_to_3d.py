@@ -41,6 +41,7 @@ def add_wall_segments(walls_binary_mask_path):
 parser = argparse.ArgumentParser()
 parser.add_argument('objs', nargs='?', default="C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\examples\\datasets\\front_3d\\output" , help="Path to the camera file, should be examples/resources/camera_positions")
 parser.add_argument('floor', nargs='?', default="C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\data\\3dmodels\\floor" , help="Path to the camera file, should be examples/resources/camera_positions")
+parser.add_argument('output_path', nargs='?', default="C:\\Users\\super\\ws\\ai-artist\\outputs\\exported_obj.obj" , help="Path to the camera file, should be examples/resources/camera_positions")
 args = parser.parse_args()
 
 bproc.init()
@@ -65,3 +66,12 @@ light = bproc.types.Light()
 light.set_type("POINT")
 light.set_location([0, 0, 4])
 light.set_energy(1000)
+
+# Select the objects you want to export (in this case, all objects in the scene)
+bpy.ops.object.select_all(action='SELECT')
+
+# Export the selected objects to the specified filepath
+bpy.ops.export_scene.obj(filepath=output_filepath, use_selection=True)
+
+# Print a success message
+print("Object exported to:", output_filepath)
