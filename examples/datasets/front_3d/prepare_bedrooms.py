@@ -4,6 +4,7 @@ import argparse
 import os
 import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
+from blenderproc.python.camera.CameraValidation import visible_objects
 import json
 
 parser = argparse.ArgumentParser()
@@ -94,24 +95,18 @@ for f in files:
             room_type="livingroom"
         )
 
-        # Dont train on bedrooms without beds, or with too few objects
-        bed_exists = False
-        for obj in loaded_objects:
-            if 'bed' in obj.get_name().lower():
-                bed_exists = True
-                break
-        
-        if len(loaded_objects) < 2 or bed_exists==False:
+        visable_objects = visable_objects(matrix_world)
+        if len(visable_objects) < 6:
             continue
 
         # shift the objects to the center
         center = None
-        for obj in get_all_mesh_objects():
+        for obj in loaded_objects:
             if 'floor' in obj.get_name().lower():
                 center = sum(obj.get_bound_box()) / 8
                 break
 
-        for obj in get_all_mesh_objects():
+        for obj in loaded_objects:
             obj.set_location(obj.get_location() - center)
 
         # Look for hdf5 file with highest index
@@ -127,7 +122,7 @@ for f in files:
         # don't add an object more than thrice
         added_objects = {}
         text = 'segmentation map, orthographic view, furnished bedroom, '
-        for obj in loaded_objects:
+        for obj in visable_objects:
             obj_name = obj.get_name().split('.')[0].lower()
             added_objects[obj_name] = added_objects.get(obj_name, 0) + 1
             if should_include(obj_name) and added_objects.get(obj_name, 0) < 3:
