@@ -435,8 +435,6 @@ class _Front3DLoader:
                     used_obj_name = "others"
                     continue
                 
-                if 'cabinet' in used_obj_name.lower():
-                    print(ele)
                 for obj in objs:
                     obj.set_name(used_obj_name)
                     # add some custom properties
