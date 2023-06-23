@@ -6,6 +6,7 @@ import numpy as np
 import json
 import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
+from blenderproc.python.camera.CameraValidation import visible_objects
 
 def object_inside_camera(location: list, scale: int):
     if abs(location[0])<scale/2 and abs(location[1])<scale/2 and abs(location[2])<scale/2:
@@ -58,6 +59,10 @@ for f in files:
             models_info_path=models_info
         )
 
+        visible_objects = visible_objects(matrix_world)
+        if len(visible_objects) < 6:
+            continue
+
         rooms_objects_count = {}
         # {room_type_id: {'obj_name': #count, .... }, .....}
         for obj in loaded_objects:
@@ -81,10 +86,6 @@ for f in files:
         for room_type_id in rooms_objects_count.keys():
             for obj_name in rooms_objects_count[room_type_id].keys():
                 objects_rendered += rooms_objects_count[room_type_id][obj_name]
-
-        if objects_rendered < 10:
-            delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
-            continue
 
         rooms_with_numbers = "A flat containing "
         rooms_with_numbers_reduced = "A flat containing "
@@ -112,13 +113,6 @@ for f in files:
         meta_data_reduced_row["file_name"] = str(output_number) + "_class_segmaps.png"
         meta_data_reduced_row["text"] = rooms_with_numbers_reduced
 
-        # # Used for generating image to image templates
-        # for obj_ in bpy.context.scene.objects:
-        #     if  'camera' not in obj_.name.lower() and 'wall' not in obj_.name.lower() and 'floor' not in obj_.name.lower() and 'window' not in obj_.name.lower():
-        #         bpy.ops.object.select_all(action='DESELECT')
-        #         obj_.select_set(True)
-        #         bpy.ops.object.delete()
-
         bproc.renderer.set_max_amount_of_samples(3)
 
         # data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
@@ -145,4 +139,3 @@ for f in files:
 
         delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
         output_number += 1
-    break
