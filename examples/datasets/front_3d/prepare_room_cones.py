@@ -5,12 +5,14 @@ import os
 import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 from blenderproc.python.camera.CameraValidation import visible_objects
-import json
-import math
+from blenderproc.python.loader.ObjectLoader import load_obj
 from utils import should_not_include, object_inside_camera
 
+import json
+import math
+
 parser = argparse.ArgumentParser()
-parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\temp", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\pointy_cone", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT\\3D-FRONT", help="Path to where the data should be saved")
 args = parser.parse_args()
 
@@ -31,7 +33,7 @@ room_types_avg_sizes = {'Library': 11.058077211854293, 'MasterBedroom': 15.94572
                         'BathRoom': 3.4706666666666672, 'Courtyard': 32.45112462807143, 'Auditorium': 43.57375,\
                         'non': [], 'Garage': 22.076666666666668}
 
-selected_room_type = 'Bedroom'
+selected_room_type = 'LivingRoom'
 if selected_room_type == 'all':
     scale = 12
 else:
@@ -61,6 +63,10 @@ else:
     with open(os.path.join(args.output_dir, "existing_scenes.json"), "r") as f:
         _ = json.load(f)
         already_written_scenes = _['files']
+
+# load pointy cone object
+pointy_cone = load_obj(filepath="C:\\Users\\super\\ws\\data\\pointy_cone\\cube_cone.obj")[0]
+pointy_cone.set_scale([0.01, 0.01, 0.01])
 
 def main():
     for f in files:
@@ -92,8 +98,23 @@ def main():
                     center += sum(obj.get_bound_box()) / 8
             center = center / floors_count
 
+            # shfit objects to the center
+            # replace each loaded mesh object with a pointy cone with the same location and rotation and category
             for obj in loaded_objects:
-                obj.set_location(obj.get_location() - center)            
+                obj.set_location(obj.get_location() - center)
+                loc_ = obj.get_location()
+                obj_name = obj.get_name().split('.')[0].lower()
+                if not should_not_include(obj_name):
+                    # loc_ = obj.get_location() - center            
+                    rot_ = obj.get_rotation_euler()
+                    cat_id_ = obj.get_cp("category_id")
+                    obj.delete()
+                    pointy_cone_ = pointy_cone.duplicate()
+                    pointy_cone_.set_cp("coarse_grained_class", cat_id_)
+                    pointy_cone_.set_cp("category_id", cat_id_)
+                    pointy_cone_.set_location(loc_)
+                    pointy_cone_.set_rotation_euler(rot_)
+                    pointy_cone_.set_scale([0.2, 0.2, 0.2])
 
 
             # Look for hdf5 file with highest index
@@ -112,22 +133,22 @@ def main():
             # Add each object name to text description
             objects_count = {}
             text = 'segmentation map, orthographic view, furnished apartment, ' + selected_room_type + ', '
-            for obj in loaded_objects:
-                if object_inside_camera(obj.get_location(), scale):
-                    obj_name = obj.get_name().split('.')[0].lower()
-                    if not should_not_include(obj_name) and objects_count.get(obj_name, 0) < 1:
-                        if obj.has_cp("from_file"):
-                            objects_count[obj_name] = 1
-                        text += obj_name + ', '
-                        training_data[str(frame_offset)].append({
-                            'name': obj.get_name(),
-                            'location': obj.get_location().tolist(),
-                            'rotation': obj.get_rotation_euler()[2]
-                        })
+            # for obj in loaded_objects:
+            #     if object_inside_camera(obj.get_location(), scale):
+            #         obj_name = obj.get_name().split('.')[0].lower()
+            #         if not should_not_include(obj_name) and objects_count.get(obj_name, 0) < 1:
+            #             if obj.has_cp("from_file"):
+            #                 objects_count[obj_name] = 1
+            #             text += obj_name + ', '
+            #             training_data[str(frame_offset)].append({
+            #                 'name': obj.get_name(),
+            #                 'location': obj.get_location().tolist(),
+            #                 'rotation': obj.get_rotation_euler()[2]
+            #             })
             
             # Dont add the scene if there are less than 4 real objects
-            if len(training_data[str(frame_offset)]) < 4:
-                continue
+            # if len(training_data[str(frame_offset)]) < 4:
+            #     continue
 
             meta_data_row = {}
             meta_data_row["file_name"] = str(frame_offset) + ".png" 
@@ -144,10 +165,10 @@ def main():
             with open(os.path.join(args.output_dir, "training_data.json"), 'a+') as outfile: 
                 json.dump(training_data, outfile)
                 outfile.writelines('\n')
+        break
+            # delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
+            # bpy.ops.outliner.orphans_purge()
 
-            delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
-            bpy.ops.outliner.orphans_purge()
-            # bproc.clean_up()
 
 if __name__ == '__main__':
     main()

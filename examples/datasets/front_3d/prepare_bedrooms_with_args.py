@@ -7,6 +7,7 @@ from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 from blenderproc.python.camera.CameraValidation import visible_objects
 import json
 import math
+from utils import should_not_include, object_inside_camera
 
 parser = argparse.ArgumentParser()
 parser.add_argument("scene_path", nargs='?')
@@ -37,16 +38,6 @@ if selected_room_type == 'all':
     scale = 12
 else:
     scale = math.sqrt(room_types_avg_sizes[selected_room_type]) + 2
-
-def object_inside_camera(location: list, scale: int):
-    if abs(location[0])<scale/2 and abs(location[1])<scale/2:
-        return True
-    return False
-
-def should_not_include(obj_name):
-    if 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name:
-        return True
-    return False
 
 bproc.init()
 mapping_file = bproc.utility.resolve_resource(os.path.join("front_3D", "3D_front_mapping_merged_new_complete.csv"))
