@@ -6,14 +6,15 @@ import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
 from blenderproc.python.camera.CameraValidation import visible_objects
 from blenderproc.python.loader.ObjectLoader import load_obj
-from utils import should_not_include, object_inside_camera
-
+from blenderproc.python.utility.Utility import should_not_include, object_inside_camera, should_delete
+import numpy as np
 import json
 import math
 
 parser = argparse.ArgumentParser()
 parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\pointy_cone", help="Path to where the data should be saved")
 parser.add_argument("data_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\3D-FRONT\\3D-FRONT", help="Path to where the data should be saved")
+parser.add_argument("scale_room", nargs='?', default=True, help="Path to where the data should be saved")
 args = parser.parse_args()
 
 room_types_avg_sizes = {'Library': 11.058077211854293, 'MasterBedroom': 15.945724690235737, \
@@ -33,7 +34,7 @@ room_types_avg_sizes = {'Library': 11.058077211854293, 'MasterBedroom': 15.94572
                         'BathRoom': 3.4706666666666672, 'Courtyard': 32.45112462807143, 'Auditorium': 43.57375,\
                         'non': [], 'Garage': 22.076666666666668}
 
-selected_room_type = 'LivingRoom'
+selected_room_type = 'Bedroom'
 if selected_room_type == 'all':
     scale = 12
 else:
@@ -95,27 +96,44 @@ def main():
             for obj in loaded_objects:
                 if 'floor' in obj.get_name().lower():
                     floors_count += 1
-                    center += sum(obj.get_bound_box()) / 8
+                    bb = obj.get_bound_box()
+                    center += sum(bb) / 8
+                    # find the length of the longest side of the bounding box
+                    if args.scale_room:
+                        max_side = max([np.linalg.norm(bb[0] - bb[1]), np.linalg.norm(bb[0] - bb[2]), np.linalg.norm(bb[0] - bb[4])])
+                        scale = max_side + 0.5
+                        bpy.context.scene.camera.data.ortho_scale = scale
             center = center / floors_count
+
 
             # shfit objects to the center
             # replace each loaded mesh object with a pointy cone with the same location and rotation and category
+            objects_count = 0
             for obj in loaded_objects:
+                obj_name = obj.get_name().split('.')[0].lower()
+                if should_delete(obj_name):
+                    obj.delete()
+                    continue
+                objects_count += 1
                 obj.set_location(obj.get_location() - center)
                 loc_ = obj.get_location()
-                obj_name = obj.get_name().split('.')[0].lower()
                 if not should_not_include(obj_name):
-                    # loc_ = obj.get_location() - center            
                     rot_ = obj.get_rotation_euler()
                     cat_id_ = obj.get_cp("category_id")
+                    room_id_ = None
+                    if obj.has_cp("room_id"):
+                        room_id_ = obj.get_cp("room_id")
                     obj.delete()
                     pointy_cone_ = pointy_cone.duplicate()
                     pointy_cone_.set_cp("coarse_grained_class", cat_id_)
                     pointy_cone_.set_cp("category_id", cat_id_)
+                    pointy_cone_.set_cp("room_id", room_id_)
                     pointy_cone_.set_location(loc_)
                     pointy_cone_.set_rotation_euler(rot_)
-                    pointy_cone_.set_scale([0.2, 0.2, 0.2])
+                    pointy_cone_.set_scale([0.15, 0.15, 0.15])
 
+            if objects_count < 3:
+                continue
 
             # Look for hdf5 file with highest index
             frame_offset = 0
@@ -125,34 +143,28 @@ def main():
                     if index.isdigit():
                         frame_offset = max(frame_offset, int(index) + 1)
 
-            # Build training text data for blip-2 model
+            # Build training text data for blip-2 
             # The data contains each objcet name in the scene, location and rotation
             # The data is saved in a json file
             training_data = {}
-            training_data[str(frame_offset)] = []
             # Add each object name to text description
             objects_count = {}
-            text = 'segmentation map, orthographic view, furnished apartment, ' + selected_room_type + ', '
-            # for obj in loaded_objects:
-            #     if object_inside_camera(obj.get_location(), scale):
-            #         obj_name = obj.get_name().split('.')[0].lower()
-            #         if not should_not_include(obj_name) and objects_count.get(obj_name, 0) < 1:
-            #             if obj.has_cp("from_file"):
-            #                 objects_count[obj_name] = 1
-            #             text += obj_name + ', '
-            #             training_data[str(frame_offset)].append({
-            #                 'name': obj.get_name(),
-            #                 'location': obj.get_location().tolist(),
-            #                 'rotation': obj.get_rotation_euler()[2]
-            #             })
-            
-            # Dont add the scene if there are less than 4 real objects
-            # if len(training_data[str(frame_offset)]) < 4:
-            #     continue
+            text = 'segmentation map, orthographic view, with camera scale of ' + scale + ' furnished apartment, ' + selected_room_type + ', '
+            for obj in loaded_objects:
+                if object_inside_camera(obj.get_location(), scale):
+                    obj_name = obj.get_name().split('.')[0].lower()
+                    if not should_not_include(obj_name) and objects_count.get(obj_name, 0) < 1:
+                        if obj.has_cp("from_file"):
+                            objects_count[obj_name] = 1
+                        text += obj_name + ', '
 
             meta_data_row = {}
             meta_data_row["file_name"] = str(frame_offset) + ".png" 
             meta_data_row["text"] = text
+            for obj in get_all_mesh_objects():
+                obj_name = obj.get_name()
+                if 'shadow' in obj_name or 'glass' in obj_name:
+                    obj.delete()
 
             data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
             bproc.writer.write_hdf5(args.output_dir, data, True)
@@ -161,10 +173,6 @@ def main():
                 json.dump(meta_data_row, f)
                 f.writelines('\n')
 
-            # append the training data to a json file
-            with open(os.path.join(args.output_dir, "training_data.json"), 'a+') as outfile: 
-                json.dump(training_data, outfile)
-                outfile.writelines('\n')
         break
             # delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
             # bpy.ops.outliner.orphans_purge()
