@@ -30,6 +30,20 @@ from blenderproc.version import __version__
 
 # pylint: enable=wrong-import-position
 
+def should_not_include(obj_name):
+    if 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+        return True
+    return False
+
+def should_delete(obj_name):
+    if 'cornice' in obj_name or 'beam' in obj_name or 'light' in obj_name or 'shadow' in obj_name or 'customizedfeaturewall' in obj_name or 'extrusioncustomizedbackgroundwall' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+        return True
+    return False
+
+def object_inside_camera(location: list, scale: int):
+    if abs(location[0])<scale/2 and abs(location[1])<scale/2:
+        return True
+    return False
 
 def resolve_path(path: Union[str, Path]) -> str:
     """ Returns an absolute path. If given path is relative, current working directory is put in front.
