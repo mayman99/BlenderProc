@@ -4,7 +4,6 @@ import argparse
 import os
 import bpy
 from blenderproc.python.types.MeshObjectUtility import get_all_mesh_objects
-from blenderproc.python.camera.CameraValidation import visible_objects
 from blenderproc.python.loader.ObjectLoader import load_obj
 from blenderproc.python.utility.Utility import should_not_include, object_inside_camera, should_delete
 import numpy as np
@@ -94,7 +93,7 @@ def main():
             center = [0, 0, 0]
             floors_count = 0
             for obj in loaded_objects:
-                if 'floor' in obj.get_name().lower():
+                if obj.get_name().split('.')[0].lower() == 'floor':
                     floors_count += 1
                     bb = obj.get_bound_box()
                     center += sum(bb) / 8
@@ -105,9 +104,12 @@ def main():
                         bpy.context.scene.camera.data.ortho_scale = scale
             center = center / floors_count
 
+            # Add each object name to text description
 
             # shfit objects to the center
             # replace each loaded mesh object with a pointy cone with the same location and rotation and category
+            objects_names_count = {}
+            text = 'segmentation map, orthographic view, with camera scale of ' + str(round(scale, 0)) + ' furnished apartment, ' + selected_room_type + ', '
             objects_count = 0
             for obj in loaded_objects:
                 obj_name = obj.get_name().split('.')[0].lower()
@@ -118,11 +120,16 @@ def main():
                 obj.set_location(obj.get_location() - center)
                 loc_ = obj.get_location()
                 if not should_not_include(obj_name):
-                    rot_ = obj.get_rotation_euler()
-                    cat_id_ = obj.get_cp("category_id")
+                    if objects_names_count.get(obj_name, 0) < 1:
+                        if obj.has_cp("from_file"):
+                            objects_names_count[obj_name] = 1
+                        text += obj_name + ', '
+
                     room_id_ = None
                     if obj.has_cp("room_id"):
                         room_id_ = obj.get_cp("room_id")
+                    rot_ = obj.get_rotation_euler()
+                    cat_id_ = obj.get_cp("category_id")
                     obj.delete()
                     pointy_cone_ = pointy_cone.duplicate()
                     pointy_cone_.set_cp("coarse_grained_class", cat_id_)
@@ -132,7 +139,7 @@ def main():
                     pointy_cone_.set_rotation_euler(rot_)
                     pointy_cone_.set_scale([0.15, 0.15, 0.15])
 
-            if objects_count < 3:
+            if objects_count < 2:
                 continue
 
             # Look for hdf5 file with highest index
@@ -142,18 +149,6 @@ def main():
                     index = path[:-len(".hdf5")]
                     if index.isdigit():
                         frame_offset = max(frame_offset, int(index) + 1)
-
-            # Build training text data for blip-2 
-            # Add each object name to text description
-            objects_count = {}
-            text = 'segmentation map, orthographic view, with camera scale of ' + str(round(scale, 0)) + ' furnished apartment, ' + selected_room_type + ', '
-            for obj in loaded_objects:
-                if object_inside_camera(obj.get_location(), scale):
-                    obj_name = obj.get_name().split('.')[0].lower()
-                    if not should_not_include(obj_name) and objects_count.get(obj_name, 0) < 1:
-                        if obj.has_cp("from_file"):
-                            objects_count[obj_name] = 1
-                        text += obj_name + ', '
 
             meta_data_row = {}
             meta_data_row["file_name"] = str(frame_offset) + ".png" 
