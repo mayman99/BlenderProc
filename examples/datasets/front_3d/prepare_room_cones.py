@@ -144,12 +144,9 @@ def main():
                         frame_offset = max(frame_offset, int(index) + 1)
 
             # Build training text data for blip-2 
-            # The data contains each objcet name in the scene, location and rotation
-            # The data is saved in a json file
-            training_data = {}
             # Add each object name to text description
             objects_count = {}
-            text = 'segmentation map, orthographic view, with camera scale of ' + scale + ' furnished apartment, ' + selected_room_type + ', '
+            text = 'segmentation map, orthographic view, with camera scale of ' + str(round(scale, 0)) + ' furnished apartment, ' + selected_room_type + ', '
             for obj in loaded_objects:
                 if object_inside_camera(obj.get_location(), scale):
                     obj_name = obj.get_name().split('.')[0].lower()
