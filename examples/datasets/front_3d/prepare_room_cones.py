@@ -66,14 +66,82 @@ else:
 
 # load pointy cone object
 pointy_cone = load_obj(filepath="C:\\Users\\super\\ws\\data\\pointy_cone\\cube_cone.obj")[0]
-pointy_cone.set_scale([0.01, 0.01, 0.01])
+
+def write_pascal_data(objects, scale, file_path, rendered_image_size:int = 512):
+    """
+    write the pascal data to the file
+    in the format:
+    # Compatible with PASCAL Annotation Version 1.00
+    Image filename : "PennFudanPed/PNGImages/FudanPed00001.png"
+    Image size (X x Y x C) : 559 x 536 x 3
+    Database : "The Penn-Fudan-Pedestrian Database"
+    Objects with ground truth : 2 { "PASpersonWalking" "PASpersonWalking" }
+    # Note there may be some objects not included in the ground truth list for they are severe-occluded
+    # or have very small size.
+    # Top left pixel co-ordinates : (1, 1)
+    # Details for pedestrian 1 ("PASpersonWalking")
+    Original label for object 1 "PASpersonWalking" : "PennFudanPed"
+    Bounding box for object 1 "PASpersonWalking" (Xmin, Ymin) - (Xmax, Ymax) : (160, 182) - (302, 431)
+    Pixel mask for object 1 "PASpersonWalking" : "PennFudanPed/PedMasks/FudanPed00001_mask.png"
+
+    # Details for pedestrian 2 ("PASpersonWalking")
+    Original label for object 2 "PASpersonWalking" : "PennFudanPed"
+    Bounding box for object 2 "PASpersonWalking" (Xmin, Ymin) - (Xmax, Ymax) : (420, 171) - (535, 486)
+    Pixel mask for object 2 "PASpersonWalking" : "PennFudanPed/PedMasks/FudanPed00001_mask.png"
+    """
+
+    def get_bb(bb, image_size, scale):
+        """
+        get bounding box in pixel corrdinates from cartesian coordinates
+        """
+        def cartesian_to_pixel(x, y):
+            # convert cartesian coordinates to normalized coordinates
+            units_per_pixel = image_size / scale
+            x = x / units_per_pixel + (image_size / 2)
+            y = y / units_per_pixel + (image_size / 2)
+            return x, y
+
+        # The bounding box has 8 points, choose the 4 points where the y is not negative
+        # get the 4 points where y is not negative
+        points = []
+        for j in range(len(bb)):
+            point = bb[j]
+            if point[2] >= 0:
+                points.append((point[0], point[1]))
+
+        # convert to pixel coordinates
+        points = [cartesian_to_pixel(x, y) for x, y in points]
+
+        # get the top left and bottom right points
+        x_min, y_min = min(points, key=lambda x: x[0])[0], min(points, key=lambda x: x[1])[1]
+        x_max, y_max = max(points, key=lambda x: x[0])[0], max(points, key=lambda x: x[1])[1]
+
+        return x_min, y_min, x_max, y_max
+
+    txt = "# Compatible with PASCAL Annotation Version 1.00\n"
+    txt += "Image filename : \"{}\"\n".format(file_path)
+    txt += "Image size (X x Y x C) : {} x {} x 3\n".format(rendered_image_size, rendered_image_size)
+    txt += "Database : \"The pointy cones Database\"\n"
+    # txt += "Objects with ground truth : \"{}\" { \"{}\" }\n".format(idx, label)
+    for idx, obj in enumerate(objects):
+        # get the bounding box
+        bbox = get_bb(obj.get_bound_box(), rendered_image_size, scale)
+        # get the label
+        label = obj.get_cp("category_id")
+        txt += "Original label for object \"{}\" \"{}\" : \"{}\"\n".format(idx, label, label)
+        txt += "Bounding box for object \"{}\" \"{}\" (Xmin, Ymin) - (Xmax, Ymax) : ({}, {}) - ({}, {})\n".format(idx, label, bbox[0], bbox[1], bbox[2], bbox[3])
+
+    # write the file
+    with open(file_path, 'w') as f:
+        f.write(txt)
 
 def main():
     for f in files:
         if 'json' in f:
             if f in already_written_scenes:
                 continue
-
+            
+            cones = []
             already_written_scenes.append(f)
             with open(os.path.join(args.output_dir, "existing_scenes.json"), "w") as output_file:
                 json.dump({'files': already_written_scenes}, output_file)
@@ -132,6 +200,7 @@ def main():
                     cat_id_ = obj.get_cp("category_id")
                     obj.delete()
                     pointy_cone_ = pointy_cone.duplicate()
+                    cones.append(pointy_cone_)
                     pointy_cone_.set_cp("coarse_grained_class", cat_id_)
                     pointy_cone_.set_cp("category_id", cat_id_)
                     pointy_cone_.set_cp("room_id", room_id_)
@@ -141,6 +210,9 @@ def main():
 
             if objects_count < 2:
                 continue
+
+            # delete the original pointy cone object
+            pointy_cone.delete()
 
             # Look for hdf5 file with highest index
             frame_offset = 0
@@ -165,10 +237,8 @@ def main():
                 json.dump(meta_data_row, f)
                 f.writelines('\n')
 
-        break
-            # delete_multiple(get_all_mesh_objects(), remove_all_offspring=True)
-            # bpy.ops.outliner.orphans_purge()
-
+            write_pascal_data(cones, scale, os.path.join(args.output_dir, "pascal_data.txt"), 512)
+            break   
 
 if __name__ == '__main__':
     main()
