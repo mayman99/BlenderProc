@@ -53,10 +53,64 @@ bpy.context.scene.render.resolution_y = 512
 bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
+def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
+    """
+    write the objects orintations data to the csv file
+    in the format:
+    file_name, y_rotation
+    """
+    with open(csv_file_path, 'a+') as f:
+        objects_count = len(objects)
+        f.write("{},{},".format(image_index, objects_count))
+        for idx, obj in enumerate(objects):
+            rot = int(obj.get_rotation_euler()[2] * 180/math.pi)
+            category_id = obj.get_cp("category_id")
+            xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), image_size, scale)
+            obj_data = "{},{},{},{},{},{}".format(category_id, xmin, ymin, xmax, ymax, rot)
+            if idx != objects_count-1:
+                obj_data += ","
+            f.write(obj_data)
+        f.write("\n")
+
+def get_bb(bb, image_size, scale):
+    """
+    get bounding box in pixel corrdinates from cartesian coordinates
+    """
+    def cartesian_to_pixel(x, y):
+        # convert cartesian coordinates to normalized coordinates
+        x += scale/2
+        y -= scale/2
+        y = abs(y)
+
+        x = x * (image_size/scale)
+        y = y * (image_size/scale)
+        return x, y
+
+    # The bounding box has 8 points, choose the 4 points where the y is not negative
+    # get the 4 points where y is not negative
+    points = []
+    for j in range(len(bb)):
+        point = bb[j]
+        if point[2] >= 0:
+            points.append((point[0], point[1]))
+
+    # print("bound box: ", bb)
+    # print("points: ", points)
+
+    # convert to pixel coordinates
+    points = [cartesian_to_pixel(x, y) for x, y in points]
+
+    # get the top left and bottom right points
+    x_min, y_min = min(points, key=lambda x: x[0])[0], min(points, key=lambda x: x[1])[1]
+    x_max, y_max = max(points, key=lambda x: x[0])[0], max(points, key=lambda x: x[1])[1]
+
+    return int(x_min), int(y_min), int(x_max), int(y_max)
+
 # load pointy cone object
 pointy_cone = load_obj(filepath="C:\\Users\\super\\ws\\data\\pointy_cone\\cube_cone.obj")[0]
 
 def main():
+    cones = []
     # load the front 3D objects
     loaded_objects = bproc.loader.load_front3d(
         json_path=args.scene_path,
@@ -111,6 +165,7 @@ def main():
             cat_id_ = obj.get_cp("category_id")
             obj.delete()
             pointy_cone_ = pointy_cone.duplicate()
+            cones.append(pointy_cone_)
             pointy_cone_.set_cp("coarse_grained_class", cat_id_)
             pointy_cone_.set_cp("category_id", cat_id_)
             pointy_cone_.set_cp("room_id", room_id_)
@@ -134,6 +189,8 @@ def main():
 
     data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
     bproc.writer.write_hdf5(args.output_dir, data, True)
+
+    write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), args.frame_offset)
 
     with open(os.path.join(args.output_dir, "metadata.jsonl"), "a+") as f:
         json.dump(meta_data_row, f)
