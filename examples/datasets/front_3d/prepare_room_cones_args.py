@@ -65,14 +65,14 @@ def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
         for idx, obj in enumerate(objects):
             rot = int(obj.get_rotation_euler()[2] * 180/math.pi)
             category_id = obj.get_cp("category_id")
-            xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), image_size, scale)
+            xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), 1.0, scale)
             obj_data = "{},{},{},{},{},{}".format(category_id, xmin, ymin, xmax, ymax, rot)
             if idx != objects_count-1:
                 obj_data += ","
             f.write(obj_data)
         f.write("\n")
 
-def get_bb(bb, image_size, scale):
+def get_bb(bb, image_size, scale, normalize:bool=True):
     """
     get bounding box in pixel corrdinates from cartesian coordinates
     """
@@ -104,7 +104,7 @@ def get_bb(bb, image_size, scale):
     x_min, y_min = min(points, key=lambda x: x[0])[0], min(points, key=lambda x: x[1])[1]
     x_max, y_max = max(points, key=lambda x: x[0])[0], max(points, key=lambda x: x[1])[1]
 
-    return int(x_min), int(y_min), int(x_max), int(y_max)
+    return x_min, y_min, x_max, y_max
 
 # load pointy cone object
 pointy_cone = load_obj(filepath="C:\\Users\\super\\ws\\data\\pointy_cone\\cube_cone.obj")[0]
@@ -157,7 +157,6 @@ def main():
                 if obj.has_cp("from_file"):
                     objects_names_count[obj_name] = 1
                 text += obj_name + ', '
-
             room_id_ = None
             if obj.has_cp("room_id"):
                 room_id_ = obj.get_cp("room_id")
@@ -178,7 +177,6 @@ def main():
 
     # delete the original pointy cone object
     pointy_cone.delete()
-
     meta_data_row = {}
     meta_data_row["file_name"] = str(args.frame_offset) + ".png" 
     meta_data_row["text"] = text
