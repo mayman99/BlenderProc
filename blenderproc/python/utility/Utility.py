@@ -31,12 +31,23 @@ from blenderproc.version import __version__
 # pylint: enable=wrong-import-position
 
 def should_not_include(obj_name):
-    if 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+    if 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name:
+        # or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name or 'column' in obj_name
         return True
     return False
 
+def should_include(obj_name, room_type:str = 'Bedroom'):
+    if room_type == 'Bedroom':
+        if 'bed' in obj_name or 'chair' in obj_name or 'sofa' in obj_name or 'table' in obj_name or 'stool' in obj_name or 'armoire' in obj_name or 'seat' in obj_name or 'wardrobe' in obj_name or 'desk' in obj_name or 'nightstand' in obj_name or 'shelf' in obj_name or 'flue' in obj_name or 'stand' in obj_name or 'storage' in obj_name:
+            return True
+        return False
+    elif room_type == 'Livingroom':
+        raise NotImplementedError
+    else:
+        raise NotImplementedError
+
 def should_delete(obj_name):
-    if 'cornice' in obj_name or 'beam' in obj_name or 'light' in obj_name or 'shadow' in obj_name or 'customizedfeaturewall' in obj_name or 'extrusioncustomizedbackgroundwall' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+    if 'cornice' in obj_name or 'cabinet' in obj_name or 'pocket' in obj_name or 'beam' in obj_name or 'light' in obj_name or 'shadow' in obj_name or 'customizedfeaturewall' in obj_name or 'extrusioncustomizedbackgroundwall' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
         return True
     return False
 
