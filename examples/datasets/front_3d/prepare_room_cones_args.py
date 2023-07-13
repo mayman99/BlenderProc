@@ -53,7 +53,7 @@ bpy.context.scene.render.resolution_y = 512
 bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
-def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
+def write_objects_csv(objects, scale, image_size, csv_file_path, image_index, normalize:bool=True):
     """
     write the objects orintations data to the csv file
     in the format:
@@ -65,19 +65,22 @@ def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
         for idx, obj in enumerate(objects):
             rot = int(obj.get_rotation_euler()[2] * 180/math.pi)
             category_id = obj.get_cp("category_id")
-            xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), 1.0, scale)
+            if normalize:
+                xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), 1.0, scale)
+            else:
+                xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), image_size, scale)
             obj_data = "{},{},{},{},{},{}".format(category_id, xmin, ymin, xmax, ymax, rot)
             if idx != objects_count-1:
                 obj_data += ","
             f.write(obj_data)
         f.write("\n")
 
-def get_bb(bb, image_size, scale, normalize:bool=True):
+def get_bb(bb, image_size, scale):
     """
     get bounding box in pixel corrdinates from cartesian coordinates
     """
     def cartesian_to_pixel(x, y):
-        # convert cartesian coordinates to normalized coordinates
+        # shift to the fourth quardrent and invert the Y-axis
         x += scale/2
         y -= scale/2
         y = abs(y)
@@ -125,6 +128,7 @@ def main():
     # and shift the objects to the center
     center = [0, 0, 0]
     floors_count = 0
+    scale = 12
     for obj in loaded_objects:
         if obj.get_name().split('.')[0].lower() == 'floor':
             floors_count += 1
@@ -137,8 +141,6 @@ def main():
                 bpy.context.scene.camera.data.ortho_scale = scale
     center = center / floors_count
 
-    # Add each object name to text description
-
     # shfit objects to the center
     # replace each loaded mesh object with a pointy cone with the same location and rotation and category
     objects_names_count = {}
@@ -149,10 +151,10 @@ def main():
         if should_delete(obj_name):
             obj.delete()
             continue
-        objects_count += 1
         obj.set_location(obj.get_location() - center)
         loc_ = obj.get_location()
-        if not should_not_include(obj_name):
+        if not should_not_include(obj_name) and abs(loc_[0])<scale and abs(loc_[1])<scale:
+            objects_count += 1
             if objects_names_count.get(obj_name, 0) < 1:
                 if obj.has_cp("from_file"):
                     objects_names_count[obj_name] = 1
@@ -188,7 +190,7 @@ def main():
     data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
     bproc.writer.write_hdf5(args.output_dir, data, True)
 
-    write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), args.frame_offset)
+    write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), args.frame_offset, normalize=False)
 
     with open(os.path.join(args.output_dir, "metadata.jsonl"), "a+") as f:
         json.dump(meta_data_row, f)
