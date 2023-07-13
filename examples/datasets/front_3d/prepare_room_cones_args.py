@@ -153,7 +153,10 @@ def main():
             continue
         obj.set_location(obj.get_location() - center)
         loc_ = obj.get_location()
-        if not should_not_include(obj_name) and abs(loc_[0])<scale and abs(loc_[1])<scale:
+
+
+        if not should_not_include(obj_name) and abs(loc_[0])<scale and abs(loc_[1])<scale and objects_names_count.get(obj_name, 0) < 1:
+            # delete objects that are the center
             objects_count += 1
             if objects_names_count.get(obj_name, 0) < 1:
                 if obj.has_cp("from_file"):
@@ -174,11 +177,18 @@ def main():
             pointy_cone_.set_rotation_euler(rot_)
             pointy_cone_.set_scale([0.15, 0.15, 0.15])
 
+
     if objects_count < 2:
         return
 
     # delete the original pointy cone object
     pointy_cone.delete()
+
+    for obj in get_all_mesh_objects():
+        if obj.get_location()[0] == 0 and obj.get_location()[1] == 0:
+            obj.delete()
+            continue
+
     meta_data_row = {}
     meta_data_row["file_name"] = str(args.frame_offset) + ".png" 
     meta_data_row["text"] = text
