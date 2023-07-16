@@ -1,7 +1,10 @@
-
-
 def should_not_include(obj_name):
-    if 'cornice' in obj_name or 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+    if 'wall' in obj_name or 'floor' in obj_name or 'ceiling' in obj_name or 'door' in obj_name or 'window' in obj_name or 'pocket' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
+        return True
+    return False
+
+def should_delete(obj_name):
+    if 'cornice' in obj_name or 'customizedfeaturewall' in obj_name or 'extrusioncustomizedbackgroundwall' in obj_name or 'front' in obj_name or 'back' in obj_name or 'baseboard' in obj_name or 'hole' in obj_name or 'slab' in obj_name or 'lamp' in obj_name:
         return True
     return False
 

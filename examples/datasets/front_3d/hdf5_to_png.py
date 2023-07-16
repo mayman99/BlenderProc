@@ -11,10 +11,10 @@ def should_not_include(obj_name):
         return True
     return False
 
-data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled'
-output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\images'
+data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection'
+output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection\\images'
 points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D\\points.npy")
-images_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\images\\'
+images_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection\\images\\'
 files = os.listdir(data_path)
 
 id_to_cat = {}
@@ -29,7 +29,7 @@ with open(os.path.join(path, old_file), 'r', encoding="utf-8") as csv_file:
         id_to_cat[row["id"]] = row["name"]
 
 metadata_list = []
-with open("C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\images\\metadata.jsonl", "r") as f:
+with open(os.path.join(data_path, "metadata.jsonl"), "r") as f:
     metadata_list = list(f)
 
 def conver_rot_data(rot_data_path:str, output_path:str):
@@ -53,13 +53,13 @@ def conver_rot_data(rot_data_path:str, output_path:str):
             # rgb_images.append(rgb_img)
             cv2.imwrite(os.path.join(output_path, file.split('.')[0]+ "_" + str(v) +'.png'), rgb_img)
 
-conver_rot_data("C:\\Users\\super\\ws\\data\\rotation_data", "C:\\Users\\super\\ws\\data\\rotation_data\\all_images")
 
     
 def func():
-    for idx, json_str in enumerate(metadata_list):
-        result = json.loads(json_str)
-        hdf = h5py.File(os.path.join(data_path, result["file_name"].split('.')[0]+".hdf5"),'r')
+    # for idx, json_str in enumerate(metadata_list):
+        # result = json.loads(json_str)
+    for i in range(len(files)):
+        hdf = h5py.File(os.path.join(data_path, str(i)+".hdf5"),'r')
         np_array = np.array(hdf["class_segmaps"])
         rgb_img = np.zeros((512, 512, 3), dtype='uint8')
         for pixel_x in range(np_array.shape[0]):
@@ -67,8 +67,10 @@ def func():
                 v = np_array[pixel_x][pixel_y]
                 rgb_img[pixel_x][pixel_y] = points[v]
 
-        cv2.imwrite(os.path.join(output_path, result["file_name"].split('.')[0]+'.png'), rgb_img)
+        cv2.imwrite(os.path.join(output_path, str(i)+'.png'), rgb_img)
 
+func()
+# conver_rot_data("C:\\Users\\super\\ws\\data\\rotation_data", "C:\\Users\\super\\ws\\data\\rotation_data\\all_images")
 
 # for f in files:
 #     if '.hdf5' in f:

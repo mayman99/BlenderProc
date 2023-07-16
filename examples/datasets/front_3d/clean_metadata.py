@@ -69,14 +69,23 @@ to_be_deleted = [
 "1307.png",
 "2352.png"
 ]
-
+images_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\images\\'
+images = os.listdir(images_path)
+print(images)
 metadata_list = []
-with open("C:\\Users\\super\\ws\\data\\front_3d\\temp\\metadata_fixed_new.jsonl", "r") as f:
+new_metadata_list = []
+
+with open("C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\images\\metadata.jsonl", "r") as f:
     metadata_list = list(f)
 
-with open("C:\\Users\\super\\ws\\data\\front_3d\\temp\\metadata_fixed_new_reduced.jsonl", "w") as f:
-    for item in metadata_list:
+for idx, json_str in enumerate(metadata_list):
+    result = json.loads(json_str)
+    if str(result["file_name"]) in images:
+        print(result["file_name"])
+        new_metadata_list.append(json_str)
+
+with open("C:\\Users\\super\\ws\\data\\front_3d\\temp_scaled\\metadata_new.jsonl", "w") as f:
+    for item in new_metadata_list:
         result = json.loads(item)
-        if result["file_name"] not in to_be_deleted:
-            json.dump(result, f)
-            f.writelines('\n')
+        json.dump(result, f)
+        f.writelines('\n')

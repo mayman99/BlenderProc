@@ -13,7 +13,7 @@ import math
 parser = argparse.ArgumentParser()
 parser.add_argument("scene_path", nargs='?')
 parser.add_argument("frame_offset", nargs='?')
-parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\temp", help="Path to where the data should be saved")
+parser.add_argument("output_dir", nargs='?', default="C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection", help="Path to where the data should be saved")
 parser.add_argument("scale_room", nargs='?', default=True, help="Path to where the data should be saved")
 args = parser.parse_args()
 
@@ -177,8 +177,8 @@ def main():
             pointy_cone_.set_rotation_euler(rot_)
             pointy_cone_.set_scale([0.15, 0.15, 0.15])
 
-
-    if objects_count < 2:
+    # dont save images with less than 2 objects or more than 10 objects
+    if objects_count < 2 or objects_count > 10:
         return
 
     # delete the original pointy cone object
@@ -188,9 +188,17 @@ def main():
         if obj.get_location()[0] == 0 and obj.get_location()[1] == 0:
             obj.delete()
             continue
+    
+    # Look for hdf5 file with highest index
+    frame_offset = 0
+    for path in os.listdir(args.output_dir):
+        if path.endswith(".hdf5"):
+            index = path[:-len(".hdf5")]
+            if index.isdigit():
+                frame_offset = max(frame_offset, int(index) + 1)
 
     meta_data_row = {}
-    meta_data_row["file_name"] = str(args.frame_offset) + ".png" 
+    meta_data_row["file_name"] = str(frame_offset) + ".png" 
     meta_data_row["text"] = text
     for obj in get_all_mesh_objects():
         obj_name = obj.get_name()
@@ -200,7 +208,7 @@ def main():
     data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
     bproc.writer.write_hdf5(args.output_dir, data, True)
 
-    write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), args.frame_offset, normalize=False)
+    write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "annotations.txt"), frame_offset, normalize=False)
 
     with open(os.path.join(args.output_dir, "metadata.jsonl"), "a+") as f:
         json.dump(meta_data_row, f)

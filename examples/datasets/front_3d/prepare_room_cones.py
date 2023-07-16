@@ -67,7 +67,7 @@ else:
 # load pointy cone object
 pointy_cone = load_obj(filepath="C:\\Users\\super\\ws\\data\\pointy_cone\\cube_cone.obj")[0]
 
-def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
+def write_objects_csv(objects, scale, image_size, csv_file_path, image_index, normalize:bool=True):
     """
     write the objects orintations data to the csv file
     in the format:
@@ -79,7 +79,10 @@ def write_objects_csv(objects, scale, image_size, csv_file_path, image_index):
         for idx, obj in enumerate(objects):
             rot = int(obj.get_rotation_euler()[2] * 180/math.pi)
             category_id = obj.get_cp("category_id")
-            xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), image_size, scale)
+            if normalize:
+                xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), 1.0, scale)
+            else:
+                xmin, ymin, xmax, ymax = get_bb(obj.get_bound_box(), image_size, scale)
             obj_data = "{},{},{},{},{},{}".format(category_id, xmin, ymin, xmax, ymax, rot)
             if idx != objects_count-1:
                 obj_data += ","
@@ -91,7 +94,7 @@ def get_bb(bb, image_size, scale):
     get bounding box in pixel corrdinates from cartesian coordinates
     """
     def cartesian_to_pixel(x, y):
-        # convert cartesian coordinates to normalized coordinates
+        # shift to the fourth quardrent and invert the Y-axis
         x += scale/2
         y -= scale/2
         y = abs(y)
@@ -118,46 +121,7 @@ def get_bb(bb, image_size, scale):
     x_min, y_min = min(points, key=lambda x: x[0])[0], min(points, key=lambda x: x[1])[1]
     x_max, y_max = max(points, key=lambda x: x[0])[0], max(points, key=lambda x: x[1])[1]
 
-    return int(x_min), int(y_min), int(x_max), int(y_max)
-
-def write_pascal_data(objects, scale, file_path, rendered_image_size:int = 512):
-    """
-    write the pascal data to the file
-    in the format:
-    # Compatible with PASCAL Annotation Version 1.00
-    Image filename : "PennFudanPed/PNGImages/FudanPed00001.png"
-    Image size (X x Y x C) : 559 x 536 x 3
-    Database : "The Penn-Fudan-Pedestrian Database"
-    Objects with ground truth : 2 { "PASpersonWalking" "PASpersonWalking" }
-    # Note there may be some objects not included in the ground truth list for they are severe-occluded
-    # or have very small size.
-    # Top left pixel co-ordinates : (1, 1)
-    # Details for pedestrian 1 ("PASpersonWalking")
-    Original label for object 1 "PASpersonWalking" : "PennFudanPed"
-    Bounding box for object 1 "PASpersonWalking" (Xmin, Ymin) - (Xmax, Ymax) : (160, 182) - (302, 431)
-    Pixel mask for object 1 "PASpersonWalking" : "PennFudanPed/PedMasks/FudanPed00001_mask.png"
-
-    # Details for pedestrian 2 ("PASpersonWalking")
-    Original label for object 2 "PASpersonWalking" : "PennFudanPed"
-    Bounding box for object 2 "PASpersonWalking" (Xmin, Ymin) - (Xmax, Ymax) : (420, 171) - (535, 486)
-    Pixel mask for object 2 "PASpersonWalking" : "PennFudanPed/PedMasks/FudanPed00001_mask.png"
-    """
-    txt = "# Compatible with PASCAL Annotation Version 1.00\n"
-    txt += "Image filename : \"{}\"\n".format(file_path)
-    txt += "Image size (X x Y x C) : {} x {} x 3\n".format(rendered_image_size, rendered_image_size)
-    txt += "Database : \"The pointy cones Database\"\n"
-    # txt += "Objects with ground truth : \"{}\" { \"{}\" }\n".format(idx, label)
-    for idx, obj in enumerate(objects):
-        # get the bounding box
-        bbox = get_bb(obj.get_bound_box(), rendered_image_size, scale)
-        # get the label
-        label = obj.get_cp("category_id")
-        txt += "Original label for object \"{}\" \"{}\" : \"{}\"\n".format(idx, label, label)
-        txt += "Bounding box for object \"{}\" \"{}\" (Xmin, Ymin) - (Xmax, Ymax) : ({}, {}) - ({}, {})\n".format(idx, label, bbox[0], bbox[1], bbox[2], bbox[3])
-
-    # write the file
-    with open(file_path, 'w') as f:
-        f.write(txt)
+    return x_min, y_min, x_max, y_max
 
 def main():
     for f in files:
@@ -179,11 +143,11 @@ def main():
                 models_info_path=models_info,
                 room_type=selected_room_type.lower()
             )
-
             # calculate the median of all the floor objects
             # and shift the objects to the center
             center = [0, 0, 0]
             floors_count = 0
+            scale = 12
             for obj in loaded_objects:
                 if obj.get_name().split('.')[0].lower() == 'floor':
                     floors_count += 1
@@ -196,8 +160,6 @@ def main():
                         bpy.context.scene.camera.data.ortho_scale = scale
             center = center / floors_count
 
-            # Add each object name to text description
-
             # shfit objects to the center
             # replace each loaded mesh object with a pointy cone with the same location and rotation and category
             objects_names_count = {}
@@ -208,15 +170,17 @@ def main():
                 if should_delete(obj_name):
                     obj.delete()
                     continue
-                objects_count += 1
                 obj.set_location(obj.get_location() - center)
                 loc_ = obj.get_location()
-                if not should_not_include(obj_name):
+
+
+                if not should_not_include(obj_name) and abs(loc_[0])<scale and abs(loc_[1])<scale and objects_names_count.get(obj_name, 0) < 1:
+                    # delete objects that are the center
+                    objects_count += 1
                     if objects_names_count.get(obj_name, 0) < 1:
                         if obj.has_cp("from_file"):
                             objects_names_count[obj_name] = 1
                         text += obj_name + ', '
-
                     room_id_ = None
                     if obj.has_cp("room_id"):
                         room_id_ = obj.get_cp("room_id")
@@ -232,12 +196,18 @@ def main():
                     pointy_cone_.set_rotation_euler(rot_)
                     pointy_cone_.set_scale([0.15, 0.15, 0.15])
 
-            if objects_count < 2:
-                continue
+            # dont save images with less than 2 objects or more than 10 objects
+            if objects_count < 2 or objects_count > 10:
+                return
 
             # delete the original pointy cone object
             pointy_cone.delete()
 
+            for obj in get_all_mesh_objects():
+                if obj.get_location()[0] == 0 and obj.get_location()[1] == 0:
+                    obj.delete()
+                    continue
+            
             # Look for hdf5 file with highest index
             frame_offset = 0
             for path in os.listdir(args.output_dir):
@@ -257,12 +227,13 @@ def main():
             data = bproc.renderer.render_segmap(output_dir=args.output_dir, map_by=["class"])
             bproc.writer.write_hdf5(args.output_dir, data, True)
 
+            write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), frame_offset, normalize=False)
+
             with open(os.path.join(args.output_dir, "metadata.jsonl"), "a+") as f:
                 json.dump(meta_data_row, f)
                 f.writelines('\n')
 
-            write_objects_csv(cones, scale, 512, os.path.join(args.output_dir, "PointyConesDataset.txt"), frame_offset)
-            break   
+            break
 
 if __name__ == '__main__':
     main()

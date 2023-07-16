@@ -50,7 +50,6 @@ bpy.context.scene.camera.data.type = 'ORTHO'
 bpy.context.scene.camera.data.ortho_scale = scale
 
 def main():
-    print(args)
     # load the front 3D objects
     loaded_objects = bproc.loader.load_front3d(
         json_path=args.scene_path,
