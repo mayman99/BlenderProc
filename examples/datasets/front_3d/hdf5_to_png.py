@@ -11,10 +11,9 @@ def should_not_include(obj_name):
         return True
     return False
 
-data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection'
-output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection\\images'
+data_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp'
+output_path = 'C:\\Users\\super\\ws\\data\\front_3d\\temp\\images'
 points = np.load("C:\\Users\\super\\ws\\sd_lora_segmap_topdown\\blenderproc_fork\\blenderproc\\resources\\front_3D\\points.npy")
-images_path = 'C:\\Users\\super\\ws\\data\\front_3d\\cones_scaled_bedroom_obj_detection\\images\\'
 files = os.listdir(data_path)
 
 id_to_cat = {}
