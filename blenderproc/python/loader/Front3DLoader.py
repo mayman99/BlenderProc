@@ -74,6 +74,10 @@ def load_front3d(json_path: str, models_info_path: str, future_model_path: str, 
         created_objects, room_id = _Front3DLoader.create_mesh_objects_from_file(data, front_3D_texture_path,
                                                                        ceiling_light_strength, label_mapping, json_path, room_type)
 
+        # if there is no room of the given type
+        if room_id is None:
+            return []
+
         all_loaded_furniture = _Front3DLoader.load_furniture_objs(data, models_info_data, future_model_path,
                                                                   lamp_light_strength, label_mapping)
 
@@ -150,7 +154,7 @@ class _Front3DLoader:
 
     @staticmethod
     def create_mesh_objects_from_file(data: dict, front_3D_texture_path: str, ceiling_light_strength: float,
-                                      label_mapping: LabelIdMapping, json_path: str, room_type: str = 'all') -> List[MeshObject]:
+                                      label_mapping: LabelIdMapping, json_path: str, room_type: str='all') -> List[MeshObject]:
         """
         This creates for a given data json block all defined meshes and assigns the correct materials.
         This means that the json file contains some mesh, like walls and floors, which have to built up manually.
@@ -184,6 +188,9 @@ class _Front3DLoader:
                 if room_type in room_id.lower():
                     selected_room = room_id
                     break
+        
+        if selected_room is None:
+            return [], None
 
         # extract all used materials -> there are more materials defined than used
         used_materials = []
