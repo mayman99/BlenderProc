@@ -38,7 +38,7 @@ def should_not_include(obj_name):
 
 def should_include(obj_name, room_type:str = 'Bedroom'):
     if room_type == 'Bedroom':
-        if 'bed' in obj_name or 'chair' in obj_name or 'sofa' in obj_name or 'table' in obj_name or 'stool' in obj_name or 'armoire' in obj_name or 'seat' in obj_name or 'wardrobe' in obj_name or 'desk' in obj_name or 'nightstand' in obj_name or 'shelf' in obj_name or 'flue' in obj_name or 'stand' in obj_name or 'storage' in obj_name:
+        if 'bed' in obj_name or 'chair' in obj_name or 'sofa' in obj_name or 'table' in obj_name or 'stool' in obj_name or 'armoire' in obj_name or 'seat' in obj_name or 'wardrobe' in obj_name or 'desk' in obj_name or 'nightstand' in obj_name or 'shelf' in obj_name or 'stand' in obj_name or 'storage' in obj_name:
             return True
         return False
     elif room_type == 'Livingroom':
