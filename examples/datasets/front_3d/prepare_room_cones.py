@@ -173,14 +173,12 @@ def main():
                 obj.set_location(obj.get_location() - center)
                 loc_ = obj.get_location()
 
-
                 if not should_not_include(obj_name) and abs(loc_[0])<scale and abs(loc_[1])<scale and objects_names_count.get(obj_name, 0) < 1:
                     # delete objects that are the center
                     objects_count += 1
                     if objects_names_count.get(obj_name, 0) < 1:
                         if obj.has_cp("from_file"):
                             objects_names_count[obj_name] = 1
-                        text += obj_name + ', '
                     room_id_ = None
                     if obj.has_cp("room_id"):
                         room_id_ = obj.get_cp("room_id")
@@ -207,6 +205,17 @@ def main():
                 if obj.get_location()[0] == 0 and obj.get_location()[1] == 0:
                     obj.delete()
                     continue
+
+            # if more than one cone have the exact same location, delete all except one
+            for obj in cones:
+                loc_ = obj.get_location()
+                for obj_ in cones:
+                    if obj != obj_ and (obj_.get_location() == loc_).all():
+                        obj_.delete()
+                        cones.remove(obj_)
+
+            for obj in cones:
+                text += obj.get_name().split('.')[0].lower() + ', '
             
             # Look for hdf5 file with highest index
             frame_offset = 0
